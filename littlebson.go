@@ -13,70 +13,118 @@ func check(e error) {
 	}
 }
 
+type Athing struct {
+	Name string
+	Num  int64
+}
+
 func main() {
 
-	type athing struct {
-		name string
-		num  int64
-	}
+	something := Athing{"test", 400}
 
-	something := athing{name: "test", num: 100}
 	fmt.Printf("%+v\n", something)
 	typeofstruct(something)
 
-	fmt.Println(reflect.TypeOf(something.name))
+	fmt.Println(reflect.TypeOf(something.Name))
 
-	in_f, err := os.Create("data.db")
-	check(err)
+	//data := []byte{120, 200, 222}
 
-	defer in_f.Close()
+	//readBSON()
 
-	data := []byte{120, 222}
-	n1, err := in_f.Write(data)
+	writedata := buildDocumentBytes(something)
+	fmt.Println(writedata)
+	writeBSON(writedata[:])
 
-	fmt.Printf("Wrote %d bytes\n", n1)
+	//int64ToBytes(256)
 
-	dat, err := ioutil.ReadFile("data.db")
-	check(err)
-	fmt.Printf("%x\n", dat)
-
-	/*
-		f, err := os.Open("data.db")
-		check(err)
-
-		b1 := make([]byte, 5)
-		n1, err := f.Read(b1)
-		check(err)
-		fmt.Printf("%d bytes: %s\n", n1, string(b1[:n1]))
-
-		o2, err := f.Seek(6, 0)
-		check(err)
-		b2 := make([]byte, 2)
-		n2, err := f.Read(b2)
-		check(err)
-		fmt.Printf("%d bytes @ %d: ", n2, o2)
-		fmt.Printf("%v\n", string(b2[:n2]))
-
-		o3, err := f.Seek(6, 0)
-		check(err)
-		b3 := make([]byte, 2)
-		n3, err := io.ReadAtLeast(f, b3, 2)
-		check(err)
-		fmt.Printf("%d bytes @ %d: %s\n", n3, o3, string(b3))
-
-		_, err = f.Seek(0, 0)
-		check(err)
-
-		r4 := bufio.NewReader(f)
-		b4, err := r4.Peek(5)
-		check(err)
-		fmt.Printf("5 bytes: %s\n", string(b4))
-
-		f.Close()
-	*/
 }
 
 func typeofstruct(x interface{}) {
-	fmt.Println(reflect.TypeOf(x))
+	s := reflect.ValueOf(x)
 
+	typeOfStruct := s.Type()
+	for i := 0; i < s.NumField(); i++ {
+		f := s.Field(i)
+		fmt.Printf("%d: %s %s = %v\n", i, typeOfStruct.Field(i).Name, f.Type(), f.Interface())
+
+		if s.Field(i).Kind() == reflect.Int64 {
+			fmt.Println("ITS AN INT64")
+		} else {
+
+			fmt.Println("ITS NOT AN INT")
+		}
+	}
+}
+
+func buildDocumentBytes(doc interface{}) []byte {
+	docInterface := reflect.ValueOf(doc)
+	//docTypes := docInterface.Type()
+	var data []byte
+
+	for i := 0; i < docInterface.NumField(); i++ {
+		field := docInterface.Field(i)
+		switch field.Kind() {
+		case reflect.String:
+			data = append(data, uint8(0x02))                            //var type - String
+			data = append(data, []byte("Name")...)                      //field name
+			data = append(data, uint8(0), uint8(len(field.String())+1)) //terminate the name string, and add length of string value (add 1 for null terminator)
+			data = append(data, []byte(field.String())...)              //field value
+			data = append(data, uint8(0))                               //terminate the string
+		case reflect.Int64:
+			data = append(data, uint8(0x12))      //type of next var
+			data = append(data, []byte("Num")...) //field name
+			data = append(data, uint8(0))         //terminate the string
+			data = append(data, int64ToBytes(int64(field.Int()))...)
+		}
+	}
+	data = append(data, uint8(0)) //terminate the document
+
+	data = append(int32ToBytes(int32(len(data))), data...) //append document size to front
+
+	return data[:]
+
+}
+
+//pass a slice to this function for fastest speed
+func writeBSON(data []byte) {
+	file, err := os.OpenFile("data.db", os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
+
+	//in_f, err := os.Create("data.db")
+	check(err)
+
+	defer file.Close()
+
+	n1, err := file.Write(data)
+
+	fmt.Printf("Wrote %d bytes\n", n1)
+}
+
+func readBSON() {
+	dat, err := ioutil.ReadFile("data.db")
+	check(err)
+	fmt.Printf("%x\n", dat)
+}
+
+//returns in little endian
+func int64ToBytes(i int64) []byte {
+	var data [8]byte
+
+	for p := 0; p < 8; p++ {
+		data[p] = uint8(i)
+		i = i >> 8
+	}
+
+	return data[:]
+}
+
+//returns in little endian
+func int32ToBytes(i int32) []byte {
+	var data [4]byte
+
+	for p := 0; p < 4; p++ {
+		data[p] = uint8(i)
+		i = i >> 8
+	}
+
+	return data[:]
 }
