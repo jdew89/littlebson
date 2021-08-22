@@ -14,26 +14,25 @@ func check(e error) {
 }
 
 type Athing struct {
-	Name string
+	Test string
 	Num  int64
 }
 
 func main() {
 
-	something := Athing{"test", 400}
+	something := Athing{"test", -1}
 
 	fmt.Printf("%+v\n", something)
-	typeofstruct(something)
+	//typeofstruct(something)
 
-	fmt.Println(reflect.TypeOf(something.Name))
+	//fmt.Println(reflect.TypeOf(something.Name))
 
 	//data := []byte{120, 200, 222}
-
-	//readBSON()
 
 	writedata := buildDocumentBytes(something)
 	fmt.Println(writedata)
 	writeBSON(writedata[:])
+	readBSON()
 
 	//int64ToBytes(256)
 
@@ -58,7 +57,7 @@ func typeofstruct(x interface{}) {
 
 func buildDocumentBytes(doc interface{}) []byte {
 	docInterface := reflect.ValueOf(doc)
-	//docTypes := docInterface.Type()
+	docTypes := docInterface.Type() //used to get field names
 	var data []byte
 
 	for i := 0; i < docInterface.NumField(); i++ {
@@ -66,15 +65,30 @@ func buildDocumentBytes(doc interface{}) []byte {
 		switch field.Kind() {
 		case reflect.String:
 			data = append(data, uint8(0x02))                            //var type - String
-			data = append(data, []byte("Name")...)                      //field name
+			data = append(data, []byte(docTypes.Field(i).Name)...)      //field name
 			data = append(data, uint8(0), uint8(len(field.String())+1)) //terminate the name string, and add length of string value (add 1 for null terminator)
 			data = append(data, []byte(field.String())...)              //field value
 			data = append(data, uint8(0))                               //terminate the string
 		case reflect.Int64:
-			data = append(data, uint8(0x12))      //type of next var
-			data = append(data, []byte("Num")...) //field name
-			data = append(data, uint8(0))         //terminate the string
+			data = append(data, uint8(0x12))                       //type of next var
+			data = append(data, []byte(docTypes.Field(i).Name)...) //field name
+			data = append(data, uint8(0))                          //terminate the string
 			data = append(data, int64ToBytes(int64(field.Int()))...)
+		case reflect.Int32:
+			data = append(data, uint8(0x10))                       //type of next var
+			data = append(data, []byte(docTypes.Field(i).Name)...) //field name
+			data = append(data, uint8(0))                          //terminate the string
+			data = append(data, int32ToBytes(int32(field.Int()))...)
+		case reflect.Uint64: //timestamp
+			data = append(data, uint8(0x11))                       //type of next var
+			data = append(data, []byte(docTypes.Field(i).Name)...) //field name
+			data = append(data, uint8(0))                          //terminate the string
+			data = append(data, uint64ToBytes(uint64(field.Int()))...)
+		case reflect.Bool:
+			data = append(data, uint8(0x08))                       //type of next var
+			data = append(data, []byte(docTypes.Field(i).Name)...) //field name
+			data = append(data, uint8(0))                          //terminate the string
+			data = append(data, uint64ToBytes(uint64(field.Int()))...)
 		}
 	}
 	data = append(data, uint8(0)) //terminate the document
@@ -107,6 +121,18 @@ func readBSON() {
 
 //returns in little endian
 func int64ToBytes(i int64) []byte {
+	var data [8]byte
+
+	for p := 0; p < 8; p++ {
+		data[p] = uint8(i)
+		i = i >> 8
+	}
+
+	return data[:]
+}
+
+//returns in little endian
+func uint64ToBytes(i uint64) []byte {
 	var data [8]byte
 
 	for p := 0; p < 8; p++ {
