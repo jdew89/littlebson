@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
+	"math"
 	"os"
 	"reflect"
 )
@@ -14,25 +14,32 @@ func check(e error) {
 }
 
 type Athing struct {
-	Test string
-	Num  int64
+	Test    string
+	Num64   int64
+	Num32   int32
+	Uint64  uint64
+	Boolean bool
+	Blah    interface{}
+	Float   float64
 }
 
 func main() {
 
-	something := Athing{"test", -1}
+	something := Athing{"Howedy", -1, 2000, 32134, true, nil, 12.34}
 
 	fmt.Printf("%+v\n", something)
 	//typeofstruct(something)
 
 	//fmt.Println(reflect.TypeOf(something.Name))
 
-	//data := []byte{120, 200, 222}
-
-	writedata := buildDocumentBytes(something)
-	fmt.Println(writedata)
-	writeBSON(writedata[:])
-	readBSON()
+	//writedata := buildDocumentBytes(something)
+	//fmt.Println(writedata)
+	//writeBSON(writedata[:])
+	val := reflect.ValueOf(readBSON()).Elem()
+	fmt.Println(val.Interface())
+	fmt.Println(val.NumField())
+	fmt.Println(val.Type().Field(0).Name)
+	fmt.Println(val.FieldByName(val.Type().Field(0).Name))
 
 	//int64ToBytes(256)
 
@@ -83,17 +90,27 @@ func buildDocumentBytes(doc interface{}) []byte {
 			data = append(data, uint8(0x11))                       //type of next var
 			data = append(data, []byte(docTypes.Field(i).Name)...) //field name
 			data = append(data, uint8(0))                          //terminate the string
-			data = append(data, uint64ToBytes(uint64(field.Int()))...)
+			data = append(data, uint64ToBytes(uint64(field.Uint()))...)
 		case reflect.Bool:
 			data = append(data, uint8(0x08))                       //type of next var
 			data = append(data, []byte(docTypes.Field(i).Name)...) //field name
 			data = append(data, uint8(0))                          //terminate the string
-			data = append(data, uint64ToBytes(uint64(field.Int()))...)
+			data = append(data, boolToBytes(bool(field.Bool()))...)
+		case reflect.Interface: //this is null case??
+			data = append(data, uint8(0x0A))                       //type of next var
+			data = append(data, []byte(docTypes.Field(i).Name)...) //field name
+			data = append(data, uint8(0))                          //terminate the string
+		case reflect.Float64:
+			data = append(data, uint8(0x01))                       //type of next var
+			data = append(data, []byte(docTypes.Field(i).Name)...) //field name
+			data = append(data, uint8(0))                          //terminate the string
+			data = append(data, float64ToBytes(float64(field.Float()))...)
 		}
+
 	}
 	data = append(data, uint8(0)) //terminate the document
 
-	data = append(int32ToBytes(int32(len(data))), data...) //append document size to front
+	data = append(int32ToBytes(int32(len(data)+4)), data...) //append document size to front, adds the size of int32
 
 	return data[:]
 
@@ -113,10 +130,60 @@ func writeBSON(data []byte) {
 	fmt.Printf("Wrote %d bytes\n", n1)
 }
 
-func readBSON() {
+/*func readBSON2() {
 	dat, err := ioutil.ReadFile("data.db")
 	check(err)
 	fmt.Printf("%x\n", dat)
+
+	f, err := os.Open("data.db")
+
+	docLenBytes := make([]byte, 4)
+	b1, err := f.Read(elem1)
+	check(err)
+	docLen := bytesToInt64(docLenBytes[:])
+	fmt.Println("elem1: ", docLenBytes)
+	fmt.Println("doc len: ", docLen)
+
+	offset := 4
+
+	offset, err = f.Seek(4, 0)
+	check(err)
+
+	prop1 := make([]byte, 1)
+	b1, err = f.Read(prop1)
+	check(err)
+
+	f.close()
+}*/
+
+func readBSON() interface{} {
+	typ := reflect.StructOf([]reflect.StructField{
+		{
+			Name: "Name",
+			Type: reflect.TypeOf(string("")),
+		},
+		{
+			Name: "Num",
+			Type: reflect.TypeOf(int64(0)),
+		},
+	})
+
+	v := reflect.New(typ).Elem()
+	v.Field((0)).SetString("TEST")
+	v.Field((1)).SetInt(2)
+
+	return v.Addr().Interface()
+}
+
+func bytesToInt64(b []byte) int64 {
+	var data int64
+	data = 0
+	for p := len(b) - 1; p >= 0; p-- {
+		data = data << 8
+		data += int64(b[p])
+	}
+
+	return data
 }
 
 //returns in little endian
@@ -138,6 +205,33 @@ func uint64ToBytes(i uint64) []byte {
 	for p := 0; p < 8; p++ {
 		data[p] = uint8(i)
 		i = i >> 8
+	}
+
+	return data[:]
+}
+
+//returns in little endian
+func float64ToBytes(f float64) []byte {
+	var data [8]byte
+
+	i := math.Float64bits(f)
+
+	for p := 0; p < 8; p++ {
+		data[p] = uint8(i)
+		i = i >> 8
+	}
+
+	return data[:]
+}
+
+//returns in little endian
+func boolToBytes(i bool) []byte {
+	var data [1]byte
+
+	if i {
+		data[0] = uint8(1)
+	} else {
+		data[0] = uint8(0)
 	}
 
 	return data[:]
