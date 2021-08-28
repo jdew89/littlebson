@@ -1,7 +1,9 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
+	"io"
 	"math"
 	"os"
 	"reflect"
@@ -35,11 +37,15 @@ func main() {
 	//writedata := buildDocumentBytes(something)
 	//fmt.Println(writedata)
 	//writeBSON(writedata[:])
+	readBSON2()
 	val := reflect.ValueOf(readBSON()).Elem()
 	fmt.Println(val.Interface())
 	fmt.Println(val.NumField())
 	fmt.Println(val.Type().Field(0).Name)
 	fmt.Println(val.FieldByName(val.Type().Field(0).Name))
+
+	//writedata := buildDocumentBytes(val.Interface())
+	//writeBSON(writedata[:])
 
 	//int64ToBytes(256)
 
@@ -130,31 +136,76 @@ func writeBSON(data []byte) {
 	fmt.Printf("Wrote %d bytes\n", n1)
 }
 
-/*func readBSON2() {
-	dat, err := ioutil.ReadFile("data.db")
+func readBSON2() interface{} {
+	/*dat, err := ioutil.ReadFile("data.db")
 	check(err)
-	fmt.Printf("%x\n", dat)
+	fmt.Printf("%x\n", dat)*/
 
 	f, err := os.Open("data.db")
-
-	docLenBytes := make([]byte, 4)
-	b1, err := f.Read(elem1)
 	check(err)
+	defer f.Close()
+
+	reader := bufio.NewReader(f)
+	docLenBytes := make([]byte, 4)
+	docLenBytes, err = reader.Peek(4) //gets the first document length
 	docLen := bytesToInt64(docLenBytes[:])
-	fmt.Println("elem1: ", docLenBytes)
+	fmt.Println("doc length: ", docLenBytes)
 	fmt.Println("doc len: ", docLen)
 
-	offset := 4
-
-	offset, err = f.Seek(4, 0)
+	docBytes := make([]byte, docLen)
+	_, err = io.ReadFull(reader, docBytes)
 	check(err)
 
-	prop1 := make([]byte, 1)
-	b1, err = f.Read(prop1)
-	check(err)
+	p := 4
 
-	f.close()
-}*/
+	thetypebyte := docBytes[p]
+	fmt.Println("type:", BSONType(thetypebyte))
+	p += 1
+	k := p
+	//finds the null byte
+	for docBytes[k] != byte(0x00) {
+		k++
+	}
+
+	//fieldname, err := reader.ReadString(byte(0x00)) //null byte as delimiter
+	fieldname := string(docBytes[p:k])
+	fmt.Println("Field:", fieldname)
+
+	structfield := reflect.StructField{
+		Name: fieldname,
+		Type: BSONType(thetypebyte),
+	}
+
+	document := reflect.StructOf([]reflect.StructField{structfield})
+
+	return document
+
+	//offset := 0 //tracks the offset in file
+	//b1, err := f.Read(docLenBytes)
+	//check(err)
+}
+
+//pass the byte type in the BSON
+func BSONType(b byte) reflect.Type {
+	switch b {
+	case 0x01:
+		return reflect.TypeOf(float64(0))
+	case 0x02:
+		return reflect.TypeOf(string(""))
+	case 0x10:
+		return reflect.TypeOf(int32(0))
+	case 0x08:
+		return reflect.TypeOf(true)
+	case 0x0A:
+		var i interface{}
+		return reflect.TypeOf(i)
+	case 0x11: //timestamp
+		return reflect.TypeOf(uint64(0))
+	case 0x12:
+		return reflect.TypeOf(int64(0))
+	}
+	return nil
+}
 
 func readBSON() interface{} {
 	typ := reflect.StructOf([]reflect.StructField{
@@ -170,7 +221,7 @@ func readBSON() interface{} {
 
 	v := reflect.New(typ).Elem()
 	v.Field((0)).SetString("TEST")
-	v.Field((1)).SetInt(2)
+	v.Field((1)).SetInt(123)
 
 	return v.Addr().Interface()
 }
