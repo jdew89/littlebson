@@ -25,9 +25,15 @@ type Athing struct {
 	Float   float64
 }
 
+type Blarg struct {
+	TestStr string
+	Num64   int64
+}
+
 func main() {
 
-	something := Athing{"Howedy", -1, 2000, 32134, true, nil, 12.34}
+	//something := Athing{"Howedy", -1, 2000, 32134, true, nil, 12.34}
+	something := Blarg{"Howedy", 1234}
 
 	fmt.Printf("%+v\n", something)
 	//typeofstruct(something)
@@ -48,7 +54,6 @@ func main() {
 	//writeBSON(writedata[:])
 
 	//int64ToBytes(256)
-
 }
 
 func typeofstruct(x interface{}) {
@@ -161,19 +166,40 @@ func readBSON2() interface{} {
 	var p int32
 	p = 4
 
-	thetypebyte := docBytes[p]
-	fmt.Println("type:", BSONType(thetypebyte))
-	p += 1
+	field_num := 0
 
-	fieldname, p := getFieldName(docBytes[:], p)
+	var document reflect.Value
 
-	structfield := initStructField(fieldname, thetypebyte)
+	type store_values struct {
+		FieldName string
+		ValTypeByte byte
+		ValBytes []byte //could change this to an interface, so I can keep most of my code???
+	}
+	
+	working here. store all the values in a map of this struct.
+	Then iterate through the map (using a range) and create the reflect struct and add the values
 
-	fieldvalue, p := readStringValue(docBytes[:], p)
+	val_map := make(map[int]store_values)
 
-	base_document := reflect.StructOf([]reflect.StructField{*structfield})
-	document := reflect.New(base_document).Elem()
-	document.Field(0).SetString(string(*fieldvalue))
+	for p < docLen {
+		thetypebyte := docBytes[p]
+		fmt.Println("byte type:", thetypebyte, " p: ", p)
+		fmt.Println("type:", BSONType(thetypebyte))
+		p += 1
+
+		fieldname := readFieldName(docBytes[:], &p)
+
+		structfield := initStructField(fieldname, thetypebyte)
+		base_document := reflect.StructOf([]reflect.StructField{*structfield})
+		document = reflect.New(base_document).Elem()
+
+		val_map[field_num] = store_values{thetypebyte, docBytes[]}
+		readFieldValue(&document, field_num, thetypebyte, docBytes[:], &p)
+
+
+		field_num += 1
+		fmt.Println("p:", p, "field_num:", field_num)
+	}
 
 	return document.Addr().Interface()
 
@@ -182,22 +208,79 @@ func readBSON2() interface{} {
 	//check(err)
 }
 
+func readFieldValuesToStore(typebyte byte, doc_bytes []byte, p *int32) []byte{
+	switch typebyte {
+	case 0x01:
+		//return reflect.TypeOf(float64(0))
+	case 0x02:
+		fieldvalue := readStringValue(doc_bytes[:], p)
+	case 0x10:
+		//return reflect.TypeOf(int32(0))
+	case 0x08:
+		//return reflect.TypeOf(true)
+	case 0x0A:
+		//var i interface{}
+		//return reflect.TypeOf(i)
+	case 0x11: //timestamp
+		//return reflect.TypeOf(uint64(0))
+	case 0x12:
+		fieldvalue := readInt64Value(doc_bytes[:], p)
+	}
+}
+
+//determins what type to read from bytes. Reads the bytes and then returns the pointer after the value
+//updates the document with the value
+func readFieldValue(document *reflect.Value, field_num int, typebyte byte, doc_bytes []byte, p *int32) {
+	switch typebyte {
+	case 0x01:
+		//return reflect.TypeOf(float64(0))
+	case 0x02:
+		fieldvalue := readStringValue(doc_bytes[:], p)
+		document.Field(field_num).SetString(string(*fieldvalue))
+
+	case 0x10:
+		//return reflect.TypeOf(int32(0))
+	case 0x08:
+		//return reflect.TypeOf(true)
+	case 0x0A:
+		//var i interface{}
+		//return reflect.TypeOf(i)
+	case 0x11: //timestamp
+		//return reflect.TypeOf(uint64(0))
+	case 0x12:
+		fieldvalue := readInt64Value(doc_bytes[:], p)
+		document.Field(field_num).SetInt(fieldvalue)
+	}
+}
+
+//reads a int64 value
+//pass the docbytes slice and array pointer
+//returns the int64 value and pointer location after the string
+func readInt64Value(doc_bytes []byte, p *int32) int64 {
+	int_val := bytesToInt64(doc_bytes[*p : *p+8])
+
+	fmt.Println("int val:", int_val)
+
+	*p += 8
+
+	return int_val
+}
+
 //reads a string value
 //pass the docbytes slice and array pointer
-//returns the string value and pointer location after the string
-func readStringValue(doc_bytes []byte, p int32) (*string, int32) {
-	str_len := bytesToInt32(doc_bytes[p : p+4])
-	p = p + 4
+//returns the string value
+//moves the pointer by reference
+func readStringValue(doc_bytes []byte, p *int32) *string {
+	str_len := bytesToInt32(doc_bytes[*p : *p+4])
+	*p = *p + 4
 
 	fmt.Println("str len:", str_len)
 
-	field_string := string(doc_bytes[p : p+str_len])
-	fmt.Println("field str:", field_string)
+	field_string := string(doc_bytes[*p : *p+str_len])
+	*p = *p + str_len
+	fmt.Println("field str:", field_string, " p: ", *p)
 
-	//move p past null value
-	p += 1
-
-	return &field_string, p
+	return &field_string
 }
 
 //pass name of struct and the type byte
@@ -212,22 +295,23 @@ func initStructField(name string, typebyte byte) *reflect.StructField {
 }
 
 //pass the doc_bytes slice and the pointer value
-//gets the field name and returns the pointer value after the fieldname
-func getFieldName(doc_bytes []byte, p int32) (string, int32) {
-	k := p
+//gets the field name
+//moved the pointer by reference
+func readFieldName(doc_bytes []byte, p *int32) string {
+	k := *p
 	//finds the null byte after field name
 	for doc_bytes[k] != byte(0x00) {
 		k++
 	}
 
 	//fieldname, err := reader.ReadString(byte(0x00)) //null byte as delimiter
-	fieldname := string(doc_bytes[p:k])
+	fieldname := string(doc_bytes[*p:k])
 	fmt.Println("Field:", fieldname)
 
 	//move pointer past null
-	p = k + 1
+	*p = k + 1
 
-	return fieldname, p
+	return fieldname
 }
 
 //pass the byte type in the BSON
@@ -253,6 +337,7 @@ func BSONType(b byte) reflect.Type {
 	//return nil
 }
 
+//this is a testing func for creating a reflect struct
 func readBSON() interface{} {
 	typ := reflect.StructOf([]reflect.StructField{
 		{
