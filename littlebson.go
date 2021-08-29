@@ -157,48 +157,77 @@ func readBSON2() interface{} {
 	_, err = io.ReadFull(reader, docBytes)
 	check(err)
 
+	//start pointer past the document size
 	var p int32
 	p = 4
-
-	working on making this a function for the string types
 
 	thetypebyte := docBytes[p]
 	fmt.Println("type:", BSONType(thetypebyte))
 	p += 1
-	k := p
-	//finds the null byte after field name
-	for docBytes[k] != byte(0x00) {
-		k++
-	}
 
-	//fieldname, err := reader.ReadString(byte(0x00)) //null byte as delimiter
-	fieldname := string(docBytes[p:k])
-	fmt.Println("Field:", fieldname)
+	fieldname, p := getFieldName(docBytes[:], p)
 
-	structfield := reflect.StructField{
-		Name: fieldname,
-		Type: BSONType(thetypebyte),
-	}
+	structfield := initStructField(fieldname, thetypebyte)
 
-	//move pointer past null
-	p = k + 1
+	fieldvalue, p := readStringValue(docBytes[:], p)
 
-	str_len := bytesToInt32(docBytes[p : p+4])
-	p = p + 4
-
-	fmt.Println("str len:", str_len)
-
-	field_string := docBytes[p : p+str_len]
-
-	base_document := reflect.StructOf([]reflect.StructField{structfield})
+	base_document := reflect.StructOf([]reflect.StructField{*structfield})
 	document := reflect.New(base_document).Elem()
-	document.Field(0).SetString(string(field_string))
+	document.Field(0).SetString(string(*fieldvalue))
 
 	return document.Addr().Interface()
 
 	//offset := 0 //tracks the offset in file
 	//b1, err := f.Read(docLenBytes)
 	//check(err)
+}
+
+//reads a string value
+//pass the docbytes slice and array pointer
+//returns the string value and pointer location after the string
+func readStringValue(doc_bytes []byte, p int32) (*string, int32) {
+	str_len := bytesToInt32(doc_bytes[p : p+4])
+	p = p + 4
+
+	fmt.Println("str len:", str_len)
+
+	field_string := string(doc_bytes[p : p+str_len])
+	fmt.Println("field str:", field_string)
+
+	//move p past null value
+	p += 1
+
+	return &field_string, p
+}
+
+//pass name of struct and the type byte
+//returns a reflect structfield
+func initStructField(name string, typebyte byte) *reflect.StructField {
+	structfield := reflect.StructField{
+		Name: name,
+		Type: BSONType(typebyte),
+	}
+
+	return &structfield
+}
+
+//pass the doc_bytes slice and the pointer value
+//gets the field name and returns the pointer value after the fieldname
+func getFieldName(doc_bytes []byte, p int32) (string, int32) {
+	k := p
+	//finds the null byte after field name
+	for doc_bytes[k] != byte(0x00) {
+		k++
+	}
+
+	//fieldname, err := reader.ReadString(byte(0x00)) //null byte as delimiter
+	fieldname := string(doc_bytes[p:k])
+	fmt.Println("Field:", fieldname)
+
+	//move pointer past null
+	p = k + 1
+
+	return fieldname, p
 }
 
 //pass the byte type in the BSON
