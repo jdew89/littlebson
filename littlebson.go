@@ -38,11 +38,11 @@ func main() {
 	//fmt.Println(writedata)
 	//writeBSON(writedata[:])
 	readBSON2()
-	val := reflect.ValueOf(readBSON()).Elem()
+	val := reflect.ValueOf(readBSON2()).Elem()
 	fmt.Println(val.Interface())
 	fmt.Println(val.NumField())
-	fmt.Println(val.Type().Field(0).Name)
-	fmt.Println(val.FieldByName(val.Type().Field(0).Name))
+	//fmt.Println(val.Type().Field(0).Name)
+	//fmt.Println(val.FieldByName(val.Type().Field(0).Name))
 
 	//writedata := buildDocumentBytes(val.Interface())
 	//writeBSON(writedata[:])
@@ -77,11 +77,12 @@ func buildDocumentBytes(doc interface{}) []byte {
 		field := docInterface.Field(i)
 		switch field.Kind() {
 		case reflect.String:
-			data = append(data, uint8(0x02))                            //var type - String
-			data = append(data, []byte(docTypes.Field(i).Name)...)      //field name
-			data = append(data, uint8(0), uint8(len(field.String())+1)) //terminate the name string, and add length of string value (add 1 for null terminator)
-			data = append(data, []byte(field.String())...)              //field value
-			data = append(data, uint8(0))                               //terminate the string
+			data = append(data, uint8(0x02))                                   //var type - String
+			data = append(data, []byte(docTypes.Field(i).Name)...)             //field name
+			data = append(data, uint8(0))                                      //terminate the name string
+			data = append(data, int32ToBytes(int32(len(field.String())+1))...) //add length of string value (add 1 for null terminator)
+			data = append(data, []byte(field.String())...)                     //field value
+			data = append(data, uint8(0))                                      //terminate the string
 		case reflect.Int64:
 			data = append(data, uint8(0x12))                       //type of next var
 			data = append(data, []byte(docTypes.Field(i).Name)...) //field name
@@ -148,7 +149,7 @@ func readBSON2() interface{} {
 	reader := bufio.NewReader(f)
 	docLenBytes := make([]byte, 4)
 	docLenBytes, err = reader.Peek(4) //gets the first document length
-	docLen := bytesToInt64(docLenBytes[:])
+	docLen := bytesToInt32(docLenBytes[:])
 	fmt.Println("doc length: ", docLenBytes)
 	fmt.Println("doc len: ", docLen)
 
@@ -156,13 +157,16 @@ func readBSON2() interface{} {
 	_, err = io.ReadFull(reader, docBytes)
 	check(err)
 
-	p := 4
+	var p int32
+	p = 4
+
+	working on making this a function for the string types
 
 	thetypebyte := docBytes[p]
 	fmt.Println("type:", BSONType(thetypebyte))
 	p += 1
 	k := p
-	//finds the null byte
+	//finds the null byte after field name
 	for docBytes[k] != byte(0x00) {
 		k++
 	}
@@ -176,9 +180,21 @@ func readBSON2() interface{} {
 		Type: BSONType(thetypebyte),
 	}
 
-	document := reflect.StructOf([]reflect.StructField{structfield})
+	//move pointer past null
+	p = k + 1
 
-	return document
+	str_len := bytesToInt32(docBytes[p : p+4])
+	p = p + 4
+
+	fmt.Println("str len:", str_len)
+
+	field_string := docBytes[p : p+str_len]
+
+	base_document := reflect.StructOf([]reflect.StructField{structfield})
+	document := reflect.New(base_document).Elem()
+	document.Field(0).SetString(string(field_string))
+
+	return document.Addr().Interface()
 
 	//offset := 0 //tracks the offset in file
 	//b1, err := f.Read(docLenBytes)
@@ -204,7 +220,8 @@ func BSONType(b byte) reflect.Type {
 	case 0x12:
 		return reflect.TypeOf(int64(0))
 	}
-	return nil
+	panic("Invalid type for BSON field.")
+	//return nil
 }
 
 func readBSON() interface{} {
@@ -232,6 +249,17 @@ func bytesToInt64(b []byte) int64 {
 	for p := len(b) - 1; p >= 0; p-- {
 		data = data << 8
 		data += int64(b[p])
+	}
+
+	return data
+}
+
+func bytesToInt32(b []byte) int32 {
+	var data int32
+	data = 0
+	for p := len(b) - 1; p >= 0; p-- {
+		data = data << 8
+		data += int32(b[p])
 	}
 
 	return data
