@@ -28,12 +28,16 @@ type Athing struct {
 type Blarg struct {
 	TestStr string
 	Num64   int64
+	Num32   int32
+	Uint64  uint64
+	Boolean bool
+	Float   float64
 }
 
 func main() {
 
 	//something := Athing{"Howedy", -1, 2000, 32134, true, nil, 12.34}
-	something := Blarg{"Howedy", 1234}
+	something := Blarg{"Howedy", -1, 2000, 32134, true, 12.34}
 
 	fmt.Printf("%+v\n", something)
 	//typeofstruct(something)
@@ -43,6 +47,7 @@ func main() {
 	//writedata := buildDocumentBytes(something)
 	//fmt.Println(writedata)
 	//writeBSON(writedata[:])
+
 	//readBSON2()
 	val := reflect.ValueOf(readBSON2()).Elem()
 	fmt.Println("<<<<<<<< BACK IN MAIN >>>>>>>")
@@ -228,21 +233,22 @@ func readBSON2() interface{} {
 	//check(err)
 }
 
+//sets the value of the given field with the appropiate type
 func setDocumentFieldValue(document *reflect.Value, field_value interface{}, typebyte byte, field_num int) {
 	switch typebyte {
 	case 0x01:
-		//return reflect.TypeOf(float64(0))
+		document.Field(field_num).SetFloat(reflect.ValueOf(field_value).Float())
 	case 0x02:
 		document.Field(field_num).SetString(reflect.ValueOf(field_value).String())
 	case 0x10:
-		//return reflect.TypeOf(int32(0))
+		document.Field(field_num).SetInt(reflect.ValueOf(field_value).Int())
 	case 0x08:
-		//return reflect.TypeOf(true)
+		document.Field(field_num).SetBool(reflect.ValueOf(field_value).Bool())
 	case 0x0A:
-	//var i interface{}
-	//return reflect.TypeOf(i)
+		//var i interface{}
+		//return reflect.TypeOf(i)
 	case 0x11: //timestamp
-		//return reflect.TypeOf(uint64(0))
+		document.Field(field_num).SetUint(reflect.ValueOf(field_value).Uint())
 	case 0x12:
 		document.Field(field_num).SetInt(reflect.ValueOf(field_value).Int())
 	}
@@ -253,53 +259,29 @@ func setDocumentFieldValue(document *reflect.Value, field_value interface{}, typ
 func readFieldValue(typebyte byte, doc_bytes []byte, p *int32) interface{} {
 	switch typebyte {
 	case 0x01:
-		//return reflect.TypeOf(float64(0))
+		fieldvalue := readFloat64Value(doc_bytes[:], p)
+		return fieldvalue
 	case 0x02:
 		fieldvalue := readStringValue(doc_bytes[:], p)
 		return *fieldvalue
 	case 0x10:
-		//return reflect.TypeOf(int32(0))
+		fieldvalue := readInt32Value(doc_bytes[:], p)
+		return fieldvalue
 	case 0x08:
+		fieldvalue := readBoolValue(doc_bytes[:], p)
+		return fieldvalue
 		//return reflect.TypeOf(true)
 	case 0x0A:
 		//var i interface{}
 		//return reflect.TypeOf(i)
 	case 0x11: //timestamp
-		//return reflect.TypeOf(uint64(0))
+		fieldvalue := readUint64Value(doc_bytes[:], p)
+		return fieldvalue
 	case 0x12:
-		fmt.Println("p:", *p)
 		fieldvalue := readInt64Value(doc_bytes[:], p)
 		return fieldvalue
 	}
 	panic("Cannot read field value.")
-}
-
-//reads a int64 value
-//pass the docbytes slice and array pointer
-//returns the int64 value and pointer location after the string
-func readInt64Value(doc_bytes []byte, p *int32) int64 {
-	int_val := bytesToInt64(doc_bytes[*p : *p+8])
-
-	*p += 8
-
-	return int_val
-}
-
-//reads a string value
-//pass the docbytes slice and array pointer
-//returns the string value
-//moves the pointer by reference
-func readStringValue(doc_bytes []byte, p *int32) *string {
-	str_len := bytesToInt32(doc_bytes[*p : *p+4])
-	*p = *p + 4
-
-	//fmt.Println("str len:", str_len)
-
-	field_string := string(doc_bytes[*p : *p+str_len])
-	*p = *p + str_len
-	//fmt.Println("field str:", field_string, " p: ", *p)
-
-	return &field_string
 }
 
 //pass name of struct and the type byte
@@ -378,12 +360,112 @@ func readBSON() interface{} {
 	return v.Addr().Interface()
 }
 
+/////////////////
+// <<<<<<<<<<<<<< READS VALUES FROM BYTES
+/////////////////
+
+//reads a Bool value
+//pass the docbytes slice and array pointer
+//returns the Bool value and pointer location after the string
+func readBoolValue(doc_bytes []byte, p *int32) bool {
+	int_val := bytesToBool(doc_bytes[*p])
+
+	*p += 1
+
+	return int_val
+}
+
+//reads a Float64 value
+//pass the docbytes slice and array pointer
+//returns the Float64 value and pointer location after the string
+func readFloat64Value(doc_bytes []byte, p *int32) float64 {
+	int_val := bytesToFloat64(doc_bytes[*p : *p+8])
+
+	*p += 8
+
+	return int_val
+}
+
+//reads a int64 value
+//pass the docbytes slice and array pointer
+//returns the int64 value and pointer location after the string
+func readUint64Value(doc_bytes []byte, p *int32) uint64 {
+	int_val := bytesToUint64(doc_bytes[*p : *p+8])
+
+	*p += 8
+
+	return int_val
+}
+
+//reads a int64 value
+//pass the docbytes slice and array pointer
+//returns the int64 value and pointer location after the string
+func readInt64Value(doc_bytes []byte, p *int32) int64 {
+	int_val := bytesToInt64(doc_bytes[*p : *p+8])
+
+	*p += 8
+
+	return int_val
+}
+
+//reads a int32 value
+//pass the docbytes slice and array pointer
+//returns the int64 value and pointer location after the string
+func readInt32Value(doc_bytes []byte, p *int32) int32 {
+	int_val := bytesToInt32(doc_bytes[*p : *p+4])
+
+	*p += 4
+
+	return int_val
+}
+
+//reads a string value
+//pass the docbytes slice and array pointer
+//returns the string value
+//moves the pointer by reference
+func readStringValue(doc_bytes []byte, p *int32) *string {
+	str_len := bytesToInt32(doc_bytes[*p : *p+4])
+	*p = *p + 4
+
+	//fmt.Println("str len:", str_len)
+
+	field_string := string(doc_bytes[*p : *p+str_len])
+	*p = *p + str_len
+	//fmt.Println("field str:", field_string, " p: ", *p)
+
+	return &field_string
+}
+
+///////////////
+// <<<<<<<<<<<< BYTES TO TYPE
+///////////////
+
+func bytesToBool(b byte) bool {
+	if b == 1 {
+		return true
+	} else if b == 0 {
+		return false
+	}
+	panic("Boolean byte should be 0 or 1.")
+}
+
 func bytesToInt64(b []byte) int64 {
 	var data int64
 	data = 0
 	for p := len(b) - 1; p >= 0; p-- {
 		data = data << 8
 		data += int64(b[p])
+	}
+
+	return data
+}
+
+func bytesToUint64(b []byte) uint64 {
+	var data uint64
+	data = 0
+	for p := len(b) - 1; p >= 0; p-- {
+		data = data << 8
+		data += uint64(b[p])
 	}
 
 	return data
@@ -399,6 +481,18 @@ func bytesToInt32(b []byte) int32 {
 
 	return data
 }
+
+func bytesToFloat64(b []byte) float64 {
+	bytes_as_uint := bytesToUint64(b[:])
+
+	data := math.Float64frombits(bytes_as_uint)
+
+	return data
+}
+
+///////////////
+// <<<<<<<<<<<< TYPE TO BYTES
+///////////////
 
 //returns in little endian
 func int64ToBytes(i int64) []byte {
