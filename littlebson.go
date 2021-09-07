@@ -34,10 +34,25 @@ type Blarg struct {
 	Float   float64
 }
 
+type NullValue interface {
+	null() interface{}
+}
+
+func null() interface{} {
+	var n interface{}
+	return n
+}
+
+func nullfunc() interface{} {
+	return func() interface{} {
+		return nil
+	}
+}
+
 func main() {
 
-	//something := Athing{"Howedy", -1, 2000, 32134, true, nil, 12.34}
-	something := Blarg{"Howedy", -1, 2000, 32134, true, 12.34}
+	something := Athing{"Howedy", -1, 2000, 32134, true, nil, 12.34}
+	//something := Blarg{"Howedy", -1, 2000, 32134, true, 12.34}
 
 	fmt.Printf("%+v\n", something)
 	//typeofstruct(something)
@@ -47,7 +62,7 @@ func main() {
 	//writedata := buildDocumentBytes(something)
 	//fmt.Println(writedata)
 	//writeBSON(writedata[:])
-
+	//return
 	//readBSON2()
 	val := reflect.ValueOf(readBSON2()).Elem()
 	fmt.Println("<<<<<<<< BACK IN MAIN >>>>>>>")
@@ -219,11 +234,10 @@ func readBSON2() interface{} {
 	base_document := reflect.StructOf(struct_fields[:])
 	//var document reflect.Value
 	document := reflect.New(base_document).Elem()
+
 	//add field values to struct
-	//document.Field(field_num).SetString(reflect.ValueOf(doc_map[0].FieldValue).String())
 	for key, doc := range doc_map {
 		setDocumentFieldValue(&document, doc.FieldValue, doc.FieldTypeByte, key)
-		//document.Field((key)).SetString(doc.FieldValue)
 	}
 
 	return document.Addr().Interface()
@@ -245,8 +259,7 @@ func setDocumentFieldValue(document *reflect.Value, field_value interface{}, typ
 	case 0x08:
 		document.Field(field_num).SetBool(reflect.ValueOf(field_value).Bool())
 	case 0x0A:
-		//var i interface{}
-		//return reflect.TypeOf(i)
+		//document.Field(field_num)
 	case 0x11: //timestamp
 		document.Field(field_num).SetUint(reflect.ValueOf(field_value).Uint())
 	case 0x12:
@@ -272,6 +285,7 @@ func readFieldValue(typebyte byte, doc_bytes []byte, p *int32) interface{} {
 		return fieldvalue
 		//return reflect.TypeOf(true)
 	case 0x0A:
+		return nil
 		//var i interface{}
 		//return reflect.TypeOf(i)
 	case 0x11: //timestamp
@@ -329,8 +343,8 @@ func BSONType(b byte) reflect.Type {
 	case 0x08:
 		return reflect.TypeOf(true)
 	case 0x0A:
-		var i interface{}
-		return reflect.TypeOf(i)
+		//must return a closure that returns nil - otherwise reflect sees no type and is invalid
+		return reflect.TypeOf(func() interface{} { return nil })
 	case 0x11: //timestamp
 		return reflect.TypeOf(uint64(0))
 	case 0x12:
@@ -341,7 +355,7 @@ func BSONType(b byte) reflect.Type {
 }
 
 //this is a testing func for creating a reflect struct
-func readBSON() interface{} {
+func testingreadBSON() interface{} {
 	typ := reflect.StructOf([]reflect.StructField{
 		{
 			Name: "Name",
