@@ -86,3 +86,15 @@ subtype ::= "\x00"  Generic binary subtype
           | "\x80"  User Defined
 ```
 
+## Notes
+
+- Array - The document for an array is a normal BSON document with integer values for the keys, starting with 0 and continuing sequentially. For example, the array ['red', 'blue'] would be encoded as the document {'0': 'red', '1': 'blue'}. The keys must be in ascending numerical order.
+- UTC datetime - The int64 is UTC milliseconds since the Unix epoch.
+- Timestamp - Special internal type used by MongoDB replication and sharding. First 4 bytes are an increment, second 4 are a timestamp.
+- Min key - Special type which compares lower than all other possible BSON element values.
+- Max key - Special type which compares higher than all other possible BSON element values.
+- Generic binary subtype - This is the most commonly used binary subtype and should be the 'default' for drivers and tools.
+- The BSON "binary" or "BinData" datatype is used to represent arrays of bytes. It is somewhat analogous to the Java notion of a ByteArray. BSON binary values have a subtype. This is used to indicate what kind of data is in the byte array. Subtypes from zero to 127 are predefined or reserved. Subtypes from 128-255 are user-defined.
+\x02 Binary (Old) - This used to be the default subtype, but was deprecated in favor of \x00. Drivers and tools should be sure to handle \x02 appropriately. The structure of the binary data (the byte* array in the binary non-terminal) must be an int32 followed by a (byte*). The int32 is the number of bytes in the repetition.
+  - \x03 UUID (Old) - This used to be the UUID subtype, but was deprecated in favor of \x04. Drivers and tools for languages with a native UUID type should handle \x03 appropriately.
+  - \x80-\xFF "User defined" subtypes. The binary data can be anything.
