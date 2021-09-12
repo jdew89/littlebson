@@ -42,13 +42,20 @@ e_list ::= element e_list
 ### element structure
 ```
 element ::= "\x01" e_name double    64-bit binary floating point
-          | "\x02" e_name string    UTF-8 string
-          | "\x08" e_name "\x00"    Boolean false
-          | "\x08" e_name "\x01"    Boolean true
-          | "\x0A" e_name           Null value
-          | "\x10" e_name int32     32-bit integer
-          | "\x11" e_name uint64    Timestamp
-          | "\x02" e_name int64     64-bit integer
+          | "\x02" e_name string        UTF-8 string
+          | "\x03" e_name document      Embedded document (TODO)  
+          | "\x04" e_name document      Array - see notes (TODO)
+          | "\x05" e_name binary        Binary data (TODO)
+          | "\x08" e_name "\x00"        Boolean false
+          | "\x08" e_name "\x01"        Boolean true
+          | "\x09" e_name int64         UTC datetime (TODO)
+          | "\x0A" e_name               Null value
+          | "\x0D" e_name string        JavaScript Code (TODO)
+          | "\x10" e_name int32         32-bit integer
+          | "\x11" e_name uint64        Timestamp
+          | "\x21" e_name uint64        64-bit unsigned integer
+          | "\x12" e_name int64         64-bit integer
+          | "\x13" e_name decimal128    128-bit decimal floating point (TODO)
 ```
 ### e_name structure
 ```
