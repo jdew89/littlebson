@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -45,11 +46,10 @@ func null() interface{} {
 }
 
 func main() {
-	something := Athing{"Howedy", -1, 2000, 32134, true, nil, 12.34}
-	//something := Blarg{"Howedy", -1, 2000, 32134, true, 12.34}
+	//something := Athing{"Howedy", -1, 2000, 32134, true, nil, 12.34}
+	something := Blarg{"Duuude", -100, 100, 1234, false, 56.91}
 
 	fmt.Printf("%+v\n", something)
-	//typeofstruct(something)
 
 	//fmt.Println(reflect.TypeOf(something.Name))
 
@@ -61,34 +61,31 @@ func main() {
 	f, err := os.Open("data.db")
 	check(err)
 	defer f.Close()
-	val := reflect.ValueOf(readOneDocument(f)).Elem()
+	reader := bufio.NewReader(f)
+
+	doc, err := readOneDocument(reader)
+	check(err)
+
+	val := reflect.ValueOf(doc).Elem()
 	fmt.Println("<<<<<<<< BACK IN MAIN >>>>>>>")
 	fmt.Println(val.Interface())
-	fmt.Println(val.NumField())
+	//fmt.Println(val.NumField())
+
+	doc, err = readOneDocument(reader)
+	check(err)
+	val = reflect.ValueOf(doc).Elem()
+	fmt.Println("<<<<<<<< BACK IN MAIN >>>>>>>")
+	fmt.Println(val.Interface())
+
+	doc, err = readOneDocument(reader)
+	if err != nil {
+
+	}
+	val = reflect.ValueOf(doc).Elem()
+
 	//fmt.Println(val.Type().Field(0).Name)
 	//fmt.Println(val.FieldByName(val.Type().Field(0).Name))
 
-	//writedata := buildDocumentBytes(val.Interface())
-	//writeBSON(writedata[:])
-
-	//int64ToBytes(256)
-}
-
-func typeofstruct(x interface{}) {
-	s := reflect.ValueOf(x)
-
-	typeOfStruct := s.Type()
-	for i := 0; i < s.NumField(); i++ {
-		f := s.Field(i)
-		fmt.Printf("%d: %s %s = %v\n", i, typeOfStruct.Field(i).Name, f.Type(), f.Interface())
-
-		if s.Field(i).Kind() == reflect.Int64 {
-			fmt.Println("ITS AN INT64")
-		} else {
-
-			fmt.Println("ITS NOT AN INT")
-		}
-	}
 }
 
 func buildDocumentBytes(doc interface{}) []byte {
@@ -160,17 +157,25 @@ func writeBSON(data []byte) {
 	fmt.Printf("Wrote %d bytes\n", n1)
 }
 
-func readOneDocument(f *os.File) interface{} {
-	reader := bufio.NewReader(f)
+func readOneDocument(reader *bufio.Reader) (interface{}, error) {
 	docLenBytes := make([]byte, 4)
 	docLenBytes, err := reader.Peek(4) //gets the first document length
 	docLen := bytesToInt32(docLenBytes[:])
-	fmt.Println("doc length: ", docLenBytes)
+	//fmt.Println("doc length: ", docLenBytes)
 	fmt.Println("doc len: ", docLen)
+
+	working on error handling
+	if docLen < 4 {
+		docLen = 4
+	}
 
 	docBytes := make([]byte, docLen)
 	_, err = io.ReadFull(reader, docBytes)
 	check(err)
+
+	if docLen <= 0 {
+		return nil, errors.New("Document length is zero.")
+	}
 
 	//start pointer past the document size
 	var p int32
@@ -179,8 +184,8 @@ func readOneDocument(f *os.File) interface{} {
 	type store_values struct {
 		FieldName     string
 		FieldTypeByte byte
+		FieldValue    interface{}
 		//ValBytes []byte //could change this to an interface, so I can keep most of my code???
-		FieldValue interface{}
 	}
 
 	//working here. store all the values in a map of this struct.
@@ -192,11 +197,11 @@ func readOneDocument(f *os.File) interface{} {
 	for p < docLen {
 		thetypebyte := docBytes[p]
 		//fmt.Println("byte type:", thetypebyte, " p: ", p, " fieldnum:", field_num)
-		fmt.Println("type:", BSONType(thetypebyte))
+		//fmt.Println("type:", BSONType(thetypebyte))
 		//if the type byte is null, move the pointer to the end of document and terminate loop
 		if thetypebyte == 0x00 {
 			p += 1
-			fmt.Println("found null byte, p:", p)
+			//fmt.Println("found null byte, p:", p)
 			break
 		}
 		p += 1
@@ -229,7 +234,7 @@ func readOneDocument(f *os.File) interface{} {
 		setDocumentFieldValue(&document, doc.FieldValue, doc.FieldTypeByte, key)
 	}
 
-	return document.Addr().Interface()
+	return document.Addr().Interface(), nil
 
 	//offset := 0 //tracks the offset in file
 	//b1, err := f.Read(docLenBytes)
