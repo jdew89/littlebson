@@ -50,7 +50,6 @@ func nullfunc() interface{} {
 }
 
 func main() {
-
 	something := Athing{"Howedy", -1, 2000, 32134, true, nil, 12.34}
 	//something := Blarg{"Howedy", -1, 2000, 32134, true, 12.34}
 
@@ -258,9 +257,11 @@ func setDocumentFieldValue(document *reflect.Value, field_value interface{}, typ
 		document.Field(field_num).SetInt(reflect.ValueOf(field_value).Int())
 	case 0x08:
 		document.Field(field_num).SetBool(reflect.ValueOf(field_value).Bool())
-	case 0x0A:
+	case 0x0A: //null
 		//document.Field(field_num)
 	case 0x11: //timestamp
+		document.Field(field_num).SetUint(reflect.ValueOf(field_value).Uint())
+	case 0x21: //timestamp
 		document.Field(field_num).SetUint(reflect.ValueOf(field_value).Uint())
 	case 0x12:
 		document.Field(field_num).SetInt(reflect.ValueOf(field_value).Int())
@@ -289,6 +290,9 @@ func readFieldValue(typebyte byte, doc_bytes []byte, p *int32) interface{} {
 		//var i interface{}
 		//return reflect.TypeOf(i)
 	case 0x11: //timestamp
+		fieldvalue := readUint64Value(doc_bytes[:], p)
+		return fieldvalue
+	case 0x21: //uint64
 		fieldvalue := readUint64Value(doc_bytes[:], p)
 		return fieldvalue
 	case 0x12:
@@ -346,6 +350,8 @@ func BSONType(b byte) reflect.Type {
 		//must return a closure that returns nil - otherwise reflect sees no type and is invalid
 		return reflect.TypeOf(func() interface{} { return nil })
 	case 0x11: //timestamp
+		return reflect.TypeOf(uint64(0))
+	case 0x21: //timestamp
 		return reflect.TypeOf(uint64(0))
 	case 0x12:
 		return reflect.TypeOf(int64(0))
