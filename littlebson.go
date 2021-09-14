@@ -38,15 +38,10 @@ type NullValue interface {
 	null() interface{}
 }
 
+//needed to read null values
 func null() interface{} {
 	var n interface{}
 	return n
-}
-
-func nullfunc() interface{} {
-	return func() interface{} {
-		return nil
-	}
 }
 
 func main() {
@@ -62,8 +57,11 @@ func main() {
 	//fmt.Println(writedata)
 	//writeBSON(writedata[:])
 	//return
-	//readBSON2()
-	val := reflect.ValueOf(readBSON2()).Elem()
+	//readOneDocument()
+	f, err := os.Open("data.db")
+	check(err)
+	defer f.Close()
+	val := reflect.ValueOf(readOneDocument(f)).Elem()
 	fmt.Println("<<<<<<<< BACK IN MAIN >>>>>>>")
 	fmt.Println(val.Interface())
 	fmt.Println(val.NumField())
@@ -162,18 +160,10 @@ func writeBSON(data []byte) {
 	fmt.Printf("Wrote %d bytes\n", n1)
 }
 
-func readBSON2() interface{} {
-	/*dat, err := ioutil.ReadFile("data.db")
-	check(err)
-	fmt.Printf("%x\n", dat)*/
-
-	f, err := os.Open("data.db")
-	check(err)
-	defer f.Close()
-
+func readOneDocument(f *os.File) interface{} {
 	reader := bufio.NewReader(f)
 	docLenBytes := make([]byte, 4)
-	docLenBytes, err = reader.Peek(4) //gets the first document length
+	docLenBytes, err := reader.Peek(4) //gets the first document length
 	docLen := bytesToInt32(docLenBytes[:])
 	fmt.Println("doc length: ", docLenBytes)
 	fmt.Println("doc len: ", docLen)
@@ -261,8 +251,6 @@ func setDocumentFieldValue(document *reflect.Value, field_value interface{}, typ
 		//document.Field(field_num)
 	case 0x11: //timestamp
 		document.Field(field_num).SetUint(reflect.ValueOf(field_value).Uint())
-	case 0x21: //timestamp
-		document.Field(field_num).SetUint(reflect.ValueOf(field_value).Uint())
 	case 0x12:
 		document.Field(field_num).SetInt(reflect.ValueOf(field_value).Int())
 	}
@@ -290,9 +278,6 @@ func readFieldValue(typebyte byte, doc_bytes []byte, p *int32) interface{} {
 		//var i interface{}
 		//return reflect.TypeOf(i)
 	case 0x11: //timestamp
-		fieldvalue := readUint64Value(doc_bytes[:], p)
-		return fieldvalue
-	case 0x21: //uint64
 		fieldvalue := readUint64Value(doc_bytes[:], p)
 		return fieldvalue
 	case 0x12:
@@ -350,8 +335,6 @@ func BSONType(b byte) reflect.Type {
 		//must return a closure that returns nil - otherwise reflect sees no type and is invalid
 		return reflect.TypeOf(func() interface{} { return nil })
 	case 0x11: //timestamp
-		return reflect.TypeOf(uint64(0))
-	case 0x21: //timestamp
 		return reflect.TypeOf(uint64(0))
 	case 0x12:
 		return reflect.TypeOf(int64(0))

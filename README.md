@@ -52,8 +52,7 @@ element ::= "\x01" e_name double    64-bit binary floating point
           | "\x0A" e_name               Null value
           | "\x0D" e_name string        JavaScript Code (TODO)
           | "\x10" e_name int32         32-bit integer
-          | "\x11" e_name uint64        Timestamp
-          | "\x21" e_name uint64        64-bit unsigned integer
+          | "\x11" e_name uint64        64-bit unsigned integer (Timestamp)
           | "\x12" e_name int64         64-bit integer
           | "\x13" e_name decimal128    128-bit decimal floating point (TODO)
 ```
