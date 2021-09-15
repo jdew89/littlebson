@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -79,9 +78,9 @@ func main() {
 
 	doc, err = readOneDocument(reader)
 	if err != nil {
-
+		fmt.Println("EOF")
 	}
-	val = reflect.ValueOf(doc).Elem()
+	//val = reflect.ValueOf(doc).Elem()
 
 	//fmt.Println(val.Type().Field(0).Name)
 	//fmt.Println(val.FieldByName(val.Type().Field(0).Name))
@@ -164,17 +163,14 @@ func readOneDocument(reader *bufio.Reader) (interface{}, error) {
 	//fmt.Println("doc length: ", docLenBytes)
 	fmt.Println("doc len: ", docLen)
 
-	working on error handling
 	if docLen < 4 {
 		docLen = 4
 	}
 
 	docBytes := make([]byte, docLen)
 	_, err = io.ReadFull(reader, docBytes)
-	check(err)
-
-	if docLen <= 0 {
-		return nil, errors.New("Document length is zero.")
+	if err != nil {
+		return nil, err
 	}
 
 	//start pointer past the document size
