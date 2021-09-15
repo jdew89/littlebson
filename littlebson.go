@@ -16,7 +16,7 @@ func check(e error) {
 }
 
 type Athing struct {
-	Test    string
+	TestStr string
 	Num64   int64
 	Num32   int32
 	Uint64  uint64
@@ -47,6 +47,10 @@ func null() interface{} {
 func main() {
 	//something := Athing{"Howedy", -1, 2000, 32134, true, nil, 12.34}
 	something := Blarg{"Duuude", -100, 100, 1234, false, 56.91}
+
+	daw := "test"
+
+	fmt.Println(reflect.ValueOf(daw).String() == reflect.ValueOf("test").String())
 
 	fmt.Printf("%+v\n", something)
 
@@ -84,7 +88,49 @@ func main() {
 
 	//fmt.Println(val.Type().Field(0).Name)
 	//fmt.Println(val.FieldByName(val.Type().Field(0).Name))
+	
+	so this wont compare because its a int64 and not an int. I might want to change all the int64
+	into int. It also works but not sure if this will be worse later on.
+	
+	var i int64
+	i = -100
+	findOne("data", "Num64", i)
+}
 
+//TODO - create a collection library which has this function and other searching/editing. Helps split this up
+//finds first document by searching the fieldname for given value
+//panics on bad collection name
+//returns document, or error if no matches found
+func findOne(collection_name string, field_name string, field_val interface{}) (interface{}, error) {
+	f, err := os.Open(collection_name + ".db")
+	check(err)
+	defer f.Close()
+
+	reader := bufio.NewReader(f)
+
+	fmt.Println("Finding...")
+
+	var doc interface{}
+	found := false
+	for !found {
+		doc, err = readOneDocument(reader)
+		if err != nil {
+			break
+		}
+
+		doc_val := reflect.ValueOf(doc).Elem()
+		fmt.Println(doc_val.Interface())
+		fmt.Println(doc_val.FieldByName(field_name))
+		fmt.Println(reflect.ValueOf(field_val))
+		fmt.Println(doc_val.FieldByName(field_name).Type())
+		fmt.Println(reflect.ValueOf(field_val).Type())
+		fmt.Println(doc_val.FieldByName(field_name).Interface() == reflect.ValueOf(field_val).Interface())
+		fmt.Println(doc_val.FieldByName(field_name).String() == reflect.ValueOf(field_val).String())
+
+		found = doc_val.FieldByName(field_name).Interface() == reflect.ValueOf(field_val).Interface()
+	}
+
+	return doc, err
 }
 
 func buildDocumentBytes(doc interface{}) []byte {
@@ -161,7 +207,7 @@ func readOneDocument(reader *bufio.Reader) (interface{}, error) {
 	docLenBytes, err := reader.Peek(4) //gets the first document length
 	docLen := bytesToInt32(docLenBytes[:])
 	//fmt.Println("doc length: ", docLenBytes)
-	fmt.Println("doc len: ", docLen)
+	//fmt.Println("doc len: ", docLen)
 
 	if docLen < 4 {
 		docLen = 4
@@ -344,26 +390,6 @@ func BSONType(b byte) reflect.Type {
 	//return nil
 }
 
-//this is a testing func for creating a reflect struct
-func testingreadBSON() interface{} {
-	typ := reflect.StructOf([]reflect.StructField{
-		{
-			Name: "Name",
-			Type: reflect.TypeOf(string("")),
-		},
-		{
-			Name: "Num",
-			Type: reflect.TypeOf(int64(0)),
-		},
-	})
-
-	v := reflect.New(typ).Elem()
-	v.Field((0)).SetString("TEST")
-	v.Field((1)).SetInt(123)
-
-	return v.Addr().Interface()
-}
-
 /////////////////
 // <<<<<<<<<<<<<< READS VALUES FROM BYTES
 /////////////////
@@ -433,7 +459,7 @@ func readStringValue(doc_bytes []byte, p *int32) *string {
 
 	//fmt.Println("str len:", str_len)
 
-	field_string := string(doc_bytes[*p : *p+str_len])
+	field_string := string(doc_bytes[*p : *p+str_len-1]) //-1 for the null byte at the end
 	*p = *p + str_len
 	//fmt.Println("field str:", field_string, " p: ", *p)
 
