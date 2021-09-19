@@ -7,6 +7,7 @@ import (
 	"math"
 	"os"
 	"reflect"
+	"runtime"
 )
 
 func check(e error) {
@@ -56,45 +57,44 @@ func main() {
 
 	//fmt.Println(reflect.TypeOf(something.Name))
 
-	//writedata := buildDocumentBytes(something)
+	writedata := buildDocumentBytes(something)
 	//fmt.Println(writedata)
 	//writeBSON(writedata[:])
 	//return
-	//readOneDocument()
-	f, err := os.Open("data.db")
-	check(err)
-	defer f.Close()
-	reader := bufio.NewReader(f)
+	/*
+		f, err := os.Open("data.db")
+		check(err)
+		defer f.Close()
+		reader := bufio.NewReader(f)
 
-	doc, err := readOneDocument(reader)
-	check(err)
+		doc, err := readOneDocument(reader)
+		check(err)
 
+		val := reflect.ValueOf(doc).Elem()
+		fmt.Println("<<<<<<<< BACK IN MAIN >>>>>>>")
+		fmt.Println(val.Interface())
+		//fmt.Println(val.NumField())
+
+		doc, err = readOneDocument(reader)
+		check(err)
+		val = reflect.ValueOf(doc).Elem()
+		fmt.Println("<<<<<<<< BACK IN MAIN >>>>>>>")
+		fmt.Println(val.Interface())
+
+		doc, err = readOneDocument(reader)
+		if err != nil {
+			fmt.Println("EOF")
+		}
+	*/
+
+	//var i int64
+	//i = -100
+	//findOne("data", "Num64", i)
+	doc, err := findOne("data", "Num64", -100)
+	check(err)
 	val := reflect.ValueOf(doc).Elem()
-	fmt.Println("<<<<<<<< BACK IN MAIN >>>>>>>")
-	fmt.Println(val.Interface())
-	//fmt.Println(val.NumField())
-
-	doc, err = readOneDocument(reader)
-	check(err)
-	val = reflect.ValueOf(doc).Elem()
-	fmt.Println("<<<<<<<< BACK IN MAIN >>>>>>>")
 	fmt.Println(val.Interface())
 
-	doc, err = readOneDocument(reader)
-	if err != nil {
-		fmt.Println("EOF")
-	}
-	//val = reflect.ValueOf(doc).Elem()
-
-	//fmt.Println(val.Type().Field(0).Name)
-	//fmt.Println(val.FieldByName(val.Type().Field(0).Name))
-	
-	so this wont compare because its a int64 and not an int. I might want to change all the int64
-	into int. It also works but not sure if this will be worse later on.
-	
-	var i int64
-	i = -100
-	findOne("data", "Num64", i)
 }
 
 //TODO - create a collection library which has this function and other searching/editing. Helps split this up
@@ -108,7 +108,19 @@ func findOne(collection_name string, field_name string, field_val interface{}) (
 
 	reader := bufio.NewReader(f)
 
-	fmt.Println("Finding...")
+	fmt.Println("Finding...", field_name, ": ", field_val)
+
+	//this swtich converts ints to int64's
+	//this is because golang converts int's to the underlying architecture.
+	//If the architecture is 32, it will convert to int64 just fine.
+	switch field_val.(type) {
+	case int:
+		val := int64(reflect.ValueOf(field_val).Interface().(int))
+		field_val = val
+	case uint:
+		val := uint64(reflect.ValueOf(field_val).Interface().(uint))
+		field_val = val
+	}
 
 	var doc interface{}
 	found := false
@@ -119,20 +131,23 @@ func findOne(collection_name string, field_name string, field_val interface{}) (
 		}
 
 		doc_val := reflect.ValueOf(doc).Elem()
-		fmt.Println(doc_val.Interface())
-		fmt.Println(doc_val.FieldByName(field_name))
-		fmt.Println(reflect.ValueOf(field_val))
-		fmt.Println(doc_val.FieldByName(field_name).Type())
-		fmt.Println(reflect.ValueOf(field_val).Type())
-		fmt.Println(doc_val.FieldByName(field_name).Interface() == reflect.ValueOf(field_val).Interface())
-		fmt.Println(doc_val.FieldByName(field_name).String() == reflect.ValueOf(field_val).String())
-
+		/*
+			fmt.Println(doc_val.Interface())
+			fmt.Println("doc_val: ", doc_val.FieldByName(field_name))
+			fmt.Println("find_val: ", reflect.ValueOf(field_val))
+			fmt.Println("doc_type", doc_val.FieldByName(field_name).Type())
+			fmt.Println("find_type", reflect.ValueOf(field_val).Type())
+			fmt.Println("interfaces eq: ", doc_val.FieldByName(field_name).Interface() == reflect.ValueOf(field_val).Interface())
+			//fmt.Println("string vals eq: ",doc_val.FieldByName(field_name).String() == reflect.ValueOf(field_val).String())
+		*/
 		found = doc_val.FieldByName(field_name).Interface() == reflect.ValueOf(field_val).Interface()
 	}
 
 	return doc, err
 }
 
+//Pass a struct into this func.
+//It will build a BSON document from it and return the byte array.
 func buildDocumentBytes(doc interface{}) []byte {
 	docInterface := reflect.ValueOf(doc)
 	docTypes := docInterface.Type() //used to get field names
@@ -148,6 +163,27 @@ func buildDocumentBytes(doc interface{}) []byte {
 			data = append(data, int32ToBytes(int32(len(field.String())+1))...) //add length of string value (add 1 for null terminator)
 			data = append(data, []byte(field.String())...)                     //field value
 			data = append(data, uint8(0))                                      //terminate the string
+		case reflect.Int:
+			//https://golang.org/doc/install/source#environment
+			bit_32_list := [5]string{"386", "arm", "mipsle", "mips", "wasm"}
+			is_32_bit := false
+			for i := range bit_32_list {
+				if runtime.GOARCH == bit_32_list[i] {
+					data = append(data, uint8(0x10))                       //type of next var
+					data = append(data, []byte(docTypes.Field(i).Name)...) //field name
+					data = append(data, uint8(0))                          //terminate the string
+					data = append(data, int32ToBytes(int32(field.Int()))...)
+					is_32_bit = true
+					break
+				}
+			}
+
+			if !is_32_bit {
+				data = append(data, uint8(0x12))                       //type of next var
+				data = append(data, []byte(docTypes.Field(i).Name)...) //field name
+				data = append(data, uint8(0))                          //terminate the string
+				data = append(data, int64ToBytes(int64(field.Int()))...)
+			}
 		case reflect.Int64:
 			data = append(data, uint8(0x12))                       //type of next var
 			data = append(data, []byte(docTypes.Field(i).Name)...) //field name
@@ -159,6 +195,11 @@ func buildDocumentBytes(doc interface{}) []byte {
 			data = append(data, uint8(0))                          //terminate the string
 			data = append(data, int32ToBytes(int32(field.Int()))...)
 		case reflect.Uint64: //timestamp
+			data = append(data, uint8(0x11))                       //type of next var
+			data = append(data, []byte(docTypes.Field(i).Name)...) //field name
+			data = append(data, uint8(0))                          //terminate the string
+			data = append(data, uint64ToBytes(uint64(field.Uint()))...)
+		case reflect.Uint: //always 64-bit
 			data = append(data, uint8(0x11))                       //type of next var
 			data = append(data, []byte(docTypes.Field(i).Name)...) //field name
 			data = append(data, uint8(0))                          //terminate the string
@@ -177,6 +218,8 @@ func buildDocumentBytes(doc interface{}) []byte {
 			data = append(data, []byte(docTypes.Field(i).Name)...) //field name
 			data = append(data, uint8(0))                          //terminate the string
 			data = append(data, float64ToBytes(float64(field.Float()))...)
+		default:
+			panic("Unknown data type.")
 		}
 
 	}
