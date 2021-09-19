@@ -35,6 +35,11 @@ type Blarg struct {
 	Float   float64
 }
 
+type SearchDocument struct {
+	Name  string
+	Value interface{}
+}
+
 type NullValue interface {
 	null() interface{}
 }
@@ -52,8 +57,8 @@ func main() {
 	var something Blarg
 
 	for i := 0; i < 1000; i++ {
-		something = Blarg{"Duuude" + fmt.Sprint(i), int64(i), 100 + int32(i), 1000 + uint64(i), false, 56.91 + float64(i)}
-		insertOne("data", something)
+		//something = Blarg{"Duuude" + fmt.Sprint(i), int64(i), 100 + int32(i), 1000 + uint64(i), false, 56.91 + float64(i)}
+		//insertOne("data", something)
 	}
 
 	fmt.Printf("%+v\n", something)
@@ -83,14 +88,17 @@ func main() {
 			fmt.Println("EOF")
 		}
 	*/
-
-	//var i int64
-	//i = -100
-	//findOne("data", "Num64", i)
-	doc, err := findOne("data", "Num64", 50)
-	check(err)
-	val := reflect.ValueOf(doc).Elem()
-	fmt.Println(val.Interface())
+	query := make([]SearchDocument, 3)
+	query[0] = SearchDocument{"TestStr", "Duuude6"}
+	query[1] = SearchDocument{"Num64", 6}
+	query[2] = SearchDocument{"Num32", int32(106)}
+	doc, err := findOne("data", query)
+	if err == nil {
+		val := reflect.ValueOf(doc).Elem()
+		fmt.Println(val.Interface())
+	} else {
+		fmt.Println("Not found.")
+	}
 }
 
 //TODO: could change this to accept a doc pointer rather than the object. Could save execution time.
@@ -107,7 +115,7 @@ func insertOne(collection_name string, doc interface{}) error {
 	defer file.Close()
 
 	//fmt.Println(doc_bytes)
-	_, err = writeBSON(file, doc_bytes[:])
+	err = writeBSON(file, doc_bytes[:])
 
 	return err
 }
@@ -116,7 +124,67 @@ func insertOne(collection_name string, doc interface{}) error {
 //finds first document by searching the fieldname for given value
 //panics on bad collection name
 //returns document, or error if no matches found
-func findOne(collection_name string, field_name string, field_val interface{}) (interface{}, error) {
+func findOne(collection_name string, search_arr []SearchDocument) (interface{}, error) {
+	f, err := os.Open(collection_name + ".db")
+	check(err)
+	defer f.Close()
+
+	reader := bufio.NewReader(f)
+
+	fmt.Println("Finding...", search_arr)
+
+	for i, obj := range search_arr {
+		//this swtich converts ints to int64's
+		//this is because golang converts int's to the underlying architecture.
+		//If the architecture is 32, it will convert to int64 just fine.
+		switch obj.Value.(type) {
+		case int:
+			val := int64(reflect.ValueOf(obj.Value).Interface().(int))
+			search_arr[i].Value = val
+		case uint:
+			val := uint64(reflect.ValueOf(obj.Value).Interface().(uint))
+			search_arr[i].Value = val
+		}
+	}
+
+	var doc interface{}
+	found := false
+	for !found {
+		doc, err = readOneDocument(reader)
+		if err != nil {
+			doc = nil
+			break
+		}
+
+		doc_val := reflect.ValueOf(doc).Elem()
+		/*
+			fmt.Println(doc_val.Interface())
+			fmt.Println("doc_val: ", doc_val.FieldByName(field_name))
+			fmt.Println("find_val: ", reflect.ValueOf(field_val))
+			fmt.Println("interfaces eq: ", doc_val.FieldByName(field_name).Interface() == reflect.ValueOf(field_val).Interface())
+			//fmt.Println("string vals eq: ",doc_val.FieldByName(field_name).String() == reflect.ValueOf(field_val).String())
+		*/
+		found = doc_val.FieldByName(search_arr[0].Name).Interface() == reflect.ValueOf(search_arr[0].Value).Interface()
+		//check the rest of the query params if found first
+		if found {
+			fmt.Println("found first")
+			for _, obj := range search_arr {
+				found = doc_val.FieldByName(obj.Name).Interface() == reflect.ValueOf(obj.Value).Interface()
+
+				//fmt.Println("doc_type", doc_val.FieldByName(obj.Name).Type())
+				//fmt.Println("find_type", reflect.ValueOf(obj.Value).Type())
+
+				//if one doesn't match, break
+				if !found {
+					break
+				}
+			}
+		}
+	}
+
+	return doc, err
+}
+func findOne2(collection_name string, field_name string, field_val interface{}) (interface{}, error) {
 	f, err := os.Open(collection_name + ".db")
 	check(err)
 	defer f.Close()
@@ -142,6 +210,7 @@ func findOne(collection_name string, field_name string, field_val interface{}) (
 	for !found {
 		doc, err = readOneDocument(reader)
 		if err != nil {
+			doc = nil
 			break
 		}
 
@@ -247,7 +316,7 @@ func buildDocumentBytes(doc interface{}) []byte {
 }
 
 //pass a slice to this function for fastest speed
-func writeBSON(file *os.File, data []byte) (error) {
+func writeBSON(file *os.File, data []byte) error {
 	_, err := file.Write(data)
 
 	//fmt.Printf("Wrote %d bytes\n", n1)
