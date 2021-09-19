@@ -47,20 +47,17 @@ func null() interface{} {
 
 func main() {
 	//something := Athing{"Howedy", -1, 2000, 32134, true, nil, 12.34}
-	something := Blarg{"Duuude", -100, 100, 1234, false, 56.91}
+	//something := Blarg{"Duuude", -100, 100, 1234, false, 56.91}
 
-	daw := "test"
+	var something Blarg
 
-	fmt.Println(reflect.ValueOf(daw).String() == reflect.ValueOf("test").String())
+	for i := 0; i < 1000; i++ {
+		something = Blarg{"Duuude" + fmt.Sprint(i), int64(i), 100 + int32(i), 1000 + uint64(i), false, 56.91 + float64(i)}
+		insertOne("data", something)
+	}
 
 	fmt.Printf("%+v\n", something)
 
-	//fmt.Println(reflect.TypeOf(something.Name))
-
-	writedata := buildDocumentBytes(something)
-	//fmt.Println(writedata)
-	//writeBSON(writedata[:])
-	//return
 	/*
 		f, err := os.Open("data.db")
 		check(err)
@@ -90,11 +87,29 @@ func main() {
 	//var i int64
 	//i = -100
 	//findOne("data", "Num64", i)
-	doc, err := findOne("data", "Num64", -100)
+	doc, err := findOne("data", "Num64", 50)
 	check(err)
 	val := reflect.ValueOf(doc).Elem()
 	fmt.Println(val.Interface())
+}
 
+//TODO: could change this to accept a doc pointer rather than the object. Could save execution time.
+//inserts 1 document at the end of specified collection
+func insertOne(collection_name string, doc interface{}) error {
+	doc_bytes := buildDocumentBytes(doc)
+
+	file, err := os.OpenFile(collection_name+".db", os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
+	if err != nil {
+		return err
+	}
+
+	check(err)
+	defer file.Close()
+
+	//fmt.Println(doc_bytes)
+	_, err = writeBSON(file, doc_bytes[:])
+
+	return err
 }
 
 //TODO - create a collection library which has this function and other searching/editing. Helps split this up
@@ -146,6 +161,7 @@ func findOne(collection_name string, field_name string, field_val interface{}) (
 	return doc, err
 }
 
+//TODO: could change this to accept a doc pointer rather than the object. Could save execution time.
 //Pass a struct into this func.
 //It will build a BSON document from it and return the byte array.
 func buildDocumentBytes(doc interface{}) []byte {
@@ -155,6 +171,7 @@ func buildDocumentBytes(doc interface{}) []byte {
 
 	for i := 0; i < docInterface.NumField(); i++ {
 		field := docInterface.Field(i)
+
 		switch field.Kind() {
 		case reflect.String:
 			data = append(data, uint8(0x02))                                   //var type - String
@@ -168,6 +185,7 @@ func buildDocumentBytes(doc interface{}) []byte {
 			bit_32_list := [5]string{"386", "arm", "mipsle", "mips", "wasm"}
 			is_32_bit := false
 			for i := range bit_32_list {
+				fmt.Println(runtime.GOARCH, " == ", bit_32_list[i], " ", runtime.GOARCH == bit_32_list[i])
 				if runtime.GOARCH == bit_32_list[i] {
 					data = append(data, uint8(0x10))                       //type of next var
 					data = append(data, []byte(docTypes.Field(i).Name)...) //field name
@@ -218,10 +236,7 @@ func buildDocumentBytes(doc interface{}) []byte {
 			data = append(data, []byte(docTypes.Field(i).Name)...) //field name
 			data = append(data, uint8(0))                          //terminate the string
 			data = append(data, float64ToBytes(float64(field.Float()))...)
-		default:
-			panic("Unknown data type.")
 		}
-
 	}
 	data = append(data, uint8(0)) //terminate the document
 
@@ -232,17 +247,11 @@ func buildDocumentBytes(doc interface{}) []byte {
 }
 
 //pass a slice to this function for fastest speed
-func writeBSON(data []byte) {
-	file, err := os.OpenFile("data.db", os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
+func writeBSON(file *os.File, data []byte) (error) {
+	_, err := file.Write(data)
 
-	//in_f, err := os.Create("data.db")
-	check(err)
-
-	defer file.Close()
-
-	n1, err := file.Write(data)
-
-	fmt.Printf("Wrote %d bytes\n", n1)
+	//fmt.Printf("Wrote %d bytes\n", n1)
+	return err
 }
 
 func readOneDocument(reader *bufio.Reader) (interface{}, error) {
