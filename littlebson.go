@@ -31,6 +31,7 @@ type Blarg struct {
 	Uint64  uint64
 	Boolean bool
 	Float   float64
+	Binary  []byte
 }
 
 type SearchDocument struct {
@@ -49,22 +50,30 @@ func null() interface{} {
 }
 
 func main() {
-	//something := Athing{"Howedy", -1, 2000, 32134, true, nil, 12.34}
-	//something := Blarg{"Duuude", -100, 100, 1234, false, 56.91}
+	mybytes := make([]byte, 2)
+	mybytes[0] = 0x68
+	mybytes[1] = 0x69
 
-	var something Blarg
+	//something := Athing{"Howedy", -1, 2000, 32134, true, nil, 12.34}
+	//something := Blarg{"Duuude", -100, 100, 1234, false, 56.91, mybytes[:]}
+	//insertOne("data", something)
+
+	//var something Blarg
 
 	for i := 0; i < 1000; i++ {
 		//something = Blarg{"Duuude" + fmt.Sprint(i), int64(i), 100 + int32(i), 1000 + uint64(i), false, 56.91 + float64(i)}
 		//insertOne("data", something)
 	}
 
-	fmt.Printf("%+v\n", something)
+	//fmt.Printf("%+v\n", something)
 
 	query := make([]SearchDocument, 3)
 	query[0] = SearchDocument{"TestStr", "Duuude6"}
 	query[1] = SearchDocument{"Num64", 6}
 	query[2] = SearchDocument{"Num32", int32(106)}
+	query[0] = SearchDocument{"TestStr", "Duuude"}
+	query[1] = SearchDocument{"Num64", -100}
+	query[2] = SearchDocument{"Num32", int32(100)}
 	doc, err := findOne("data", query)
 	if err == nil {
 		val := reflect.ValueOf(doc).Elem()
@@ -170,6 +179,8 @@ func setDocumentFieldValue(document *reflect.Value, field_value interface{}, typ
 		document.Field(field_num).SetFloat(reflect.ValueOf(field_value).Float())
 	case 0x02:
 		document.Field(field_num).SetString(reflect.ValueOf(field_value).String())
+	case 0x05:
+		document.Field(field_num).SetBytes(reflect.ValueOf(field_value).Bytes())
 	case 0x10:
 		document.Field(field_num).SetInt(reflect.ValueOf(field_value).Int())
 	case 0x08:
@@ -193,9 +204,9 @@ func readFieldValue(typebyte byte, doc_bytes []byte, p *int32) interface{} {
 	case 0x02:
 		fieldvalue := readStringValue(doc_bytes[:], p)
 		return *fieldvalue
-	case 0x10:
-		fieldvalue := readInt32Value(doc_bytes[:], p)
-		return fieldvalue
+	case 0x05:
+		fieldvalue := readBinaryDataValue(doc_bytes[:], p)
+		return *fieldvalue
 	case 0x08:
 		fieldvalue := readBoolValue(doc_bytes[:], p)
 		return fieldvalue
@@ -204,6 +215,9 @@ func readFieldValue(typebyte byte, doc_bytes []byte, p *int32) interface{} {
 		return nil
 		//var i interface{}
 		//return reflect.TypeOf(i)
+	case 0x10:
+		fieldvalue := readInt32Value(doc_bytes[:], p)
+		return fieldvalue
 	case 0x11: //timestamp
 		fieldvalue := readUint64Value(doc_bytes[:], p)
 		return fieldvalue
@@ -234,6 +248,8 @@ func BSONType(b byte) reflect.Type {
 		return reflect.TypeOf(float64(0))
 	case 0x02:
 		return reflect.TypeOf(string(""))
+	case 0x05:
+		return reflect.TypeOf(make([]byte, 0))
 	case 0x10:
 		return reflect.TypeOf(int32(0))
 	case 0x08:

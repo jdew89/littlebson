@@ -81,6 +81,7 @@ binary ::= int32 subtype (byte*)
 The int32 is the number of bytes in the (byte*).
 
 ### subtype structure
+TODO - subtypes are not currently supported.
 ```
 subtype ::= "\x00"  Generic binary subtype
           | "\x01"  Function

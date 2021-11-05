@@ -84,6 +84,14 @@ func buildDocumentBytes(doc interface{}) []byte {
 			data = append(data, []byte(docTypes.Field(i).Name)...) //field name
 			data = append(data, uint8(0))                          //terminate the string
 			data = append(data, float64ToBytes(float64(field.Float()))...)
+		case reflect.Slice: //binary data
+			data = append(data, uint8(0x05))                                //var type - binary data
+			data = append(data, []byte(docTypes.Field(i).Name)...)          //field name
+			data = append(data, uint8(0))                                   //terminate the name string
+			data = append(data, int32ToBytes(int32(len(field.Bytes())))...) //add length of binary value
+			//TODO add function for subtypes
+			data = append(data, uint8(0x00))              //Add the subtype
+			data = append(data, []byte(field.Bytes())...) //field value
 		}
 	}
 	data = append(data, uint8(0)) //terminate the document
@@ -188,6 +196,26 @@ func readStringValue(doc_bytes []byte, p *int32) *string {
 	//fmt.Println("field str:", field_string, " p: ", *p)
 
 	return &field_string
+}
+
+func readBinaryDataValue(doc_bytes []byte, p *int32) *[]byte {
+	bytes_len := bytesToInt32(doc_bytes[*p : *p+4])
+	*p = *p + 4
+
+	// TODO: add logic for subtypes?
+	//subtype := byte(doc_bytes[*p])
+	*p = *p + 1
+	/*switch subtype {
+	case 0x00: //generic binary
+		return doc_bytes[*p : *p+bytes_len]
+	default:
+	}*/
+
+	byte_array := doc_bytes[*p : *p+bytes_len]
+	*p = *p + bytes_len
+
+	return &byte_array
+
 }
 
 ///////////////
