@@ -9,6 +9,16 @@ import (
 
 //This file has all of the possible query functions.
 
+func openCollection(collection_path string) *bufio.Reader {
+	f, err := os.Open(collection_path + ".db")
+	check(err)
+	defer f.Close()
+
+	reader := bufio.NewReader(f)
+
+	return reader
+}
+
 //TODO: could change this to accept a doc pointer rather than the object. Could save execution time.
 //inserts 1 document at the end of specified collection
 func insertOne(collection_name string, doc interface{}) error {
@@ -28,16 +38,11 @@ func insertOne(collection_name string, doc interface{}) error {
 	return err
 }
 
-//TODO - create a collection library which has this function and other searching/editing. Helps split this up
 //finds first document by searching the fieldname for given value
 //panics on bad collection name
 //returns document, or error if no matches found
 func findOne(collection_name string, search_arr []SearchDocument) (interface{}, error) {
-	f, err := os.Open(collection_name + ".db")
-	check(err)
-	defer f.Close()
-
-	reader := bufio.NewReader(f)
+	reader := openCollection(collection_name)
 
 	fmt.Println("Finding...", search_arr)
 
