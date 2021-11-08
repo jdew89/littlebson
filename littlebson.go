@@ -32,6 +32,7 @@ type Blarg struct {
 	Boolean bool
 	Float   float64
 	Binary  []byte
+	StrArr  []string
 }
 
 type SearchDocument struct {
@@ -54,9 +55,22 @@ func main() {
 	mybytes[0] = 0x68
 	mybytes[1] = 0x69
 
+	mystringarr := make([]string, 3)
+	mystringarr[0] = "hello "
+	mystringarr[1] = "cruel "
+	mystringarr[2] = "world!"
+
+	/*test := reflect.ValueOf(mystringarr)
+	fmt.Println(test)
+	fmt.Println(test.Kind())
+	fmt.Println(test.Type())
+	fmt.Println(test.Type() == reflect.TypeOf(make([]string, 0)))*/
+
+	//return
+
 	//something := Athing{"Howedy", -1, 2000, 32134, true, nil, 12.34}
-	//something := Blarg{"Duuude", -100, 100, 1234, false, 56.91, mybytes[:]}
-	//insertOne("data", something)
+	something := Blarg{"Duuude", -100, 100, 1234, false, 56.91, mybytes[:], mystringarr[:]}
+	insertOne("data", something)
 
 	//var something Blarg
 
@@ -91,6 +105,7 @@ func writeBSON(file *os.File, data []byte) error {
 	return err
 }
 
+//reads 1 full document into memory and returns it as an interface
 func readOneDocument(reader *bufio.Reader) (interface{}, error) {
 	docLenBytes := make([]byte, 4)
 	docLenBytes, err := reader.Peek(4) //gets the first document length

@@ -43,6 +43,7 @@ func insertOne(collection_name string, doc interface{}) error {
 //returns document, or error if no matches found
 func findOne(collection_name string, search_arr []SearchDocument) (interface{}, error) {
 	reader := openCollection(collection_name)
+	var err error
 
 	fmt.Println("Finding...", search_arr)
 
