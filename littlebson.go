@@ -70,6 +70,7 @@ func main() {
 
 	//something := Athing{"Howedy", -1, 2000, 32134, true, nil, 12.34}
 	something := Blarg{"Duuude", -100, 100, 1234, false, 56.91, mybytes[:], mystringarr[:]}
+	//insertOne("data", mystringarr)
 	insertOne("data", something)
 
 	//var something Blarg
