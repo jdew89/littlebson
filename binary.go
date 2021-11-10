@@ -19,13 +19,17 @@ func buildDocumentBytes(doc interface{}) []byte {
 	var data []byte
 
 	fmt.Println("in build docbytes: ", docTypes)
-	if docTypes == reflect.TypeOf(make([]string, 0)) {
+	fmt.Println(docInterface)
 
+	//since arrays are also documents, if this sees an array, build it like a document
+	switch docTypes {
+	case reflect.TypeOf(make([]uint8, 0)):
+
+	case reflect.TypeOf(make([]string, 0)):
 		str_slice := docInterface.Interface().([]string)
-		fmt.Println(str_slice)
 
 		for i := 0; i < len(str_slice); i++ {
-			data = append(data, uint8(0x02))                               //var type - String
+			data = append(data, STRING_TYPE)                               //var type - String
 			data = append(data, fieldNameBytes(strconv.Itoa(i))...)        //converts the int to a string for the name
 			data = append(data, int32ToBytes(int32(len(str_slice[i])))...) //add length of string value (add 1 for null terminator)
 			data = append(data, []byte(str_slice[i])...)                   //field value
@@ -34,15 +38,15 @@ func buildDocumentBytes(doc interface{}) []byte {
 
 		data = endOfDocumentBytes(data[:])
 		return data[:]
-
 	}
 
+	//loops through fields of the struct
 	for i := 0; i < docInterface.NumField(); i++ {
 		field := docInterface.Field(i)
 
 		switch field.Kind() {
 		case reflect.String:
-			data = append(data, uint8(0x02)) //var type - String
+			data = append(data, STRING_TYPE) //var type - String
 			data = append(data, fieldNameBytes(docTypes.Field(i).Name)...)
 			data = append(data, int32ToBytes(int32(len(field.String())+1))...) //add length of string value (add 1 for null terminator)
 			data = append(data, []byte(field.String())...)                     //field value
@@ -54,7 +58,7 @@ func buildDocumentBytes(doc interface{}) []byte {
 			for i := range bit_32_list {
 				fmt.Println(runtime.GOARCH, " == ", bit_32_list[i], " ", runtime.GOARCH == bit_32_list[i])
 				if runtime.GOARCH == bit_32_list[i] {
-					data = append(data, uint8(0x10)) //type of field
+					data = append(data, INT32_TYPE) //type of field
 					data = append(data, fieldNameBytes(docTypes.Field(i).Name)...)
 					data = append(data, int32ToBytes(int32(field.Int()))...)
 					is_32_bit = true
@@ -63,58 +67,54 @@ func buildDocumentBytes(doc interface{}) []byte {
 			}
 
 			if !is_32_bit {
-				data = append(data, uint8(0x12)) //type of field
+				data = append(data, INT64_TYPE) //type of field
 				data = append(data, fieldNameBytes(docTypes.Field(i).Name)...)
 				data = append(data, int64ToBytes(int64(field.Int()))...)
 			}
 		case reflect.Int64:
-			data = append(data, uint8(0x12)) //type of field
+			data = append(data, INT64_TYPE) //type of field
 			data = append(data, fieldNameBytes(docTypes.Field(i).Name)...)
 			data = append(data, int64ToBytes(int64(field.Int()))...)
 		case reflect.Int32:
-			data = append(data, uint8(0x10)) //type of field
+			data = append(data, INT32_TYPE) //type of field
 			data = append(data, fieldNameBytes(docTypes.Field(i).Name)...)
 			data = append(data, int32ToBytes(int32(field.Int()))...)
 		case reflect.Uint64: //timestamp
-			data = append(data, uint8(0x11)) //type of field
+			data = append(data, UINT64_TYPE) //type of field
 			data = append(data, fieldNameBytes(docTypes.Field(i).Name)...)
 			data = append(data, uint64ToBytes(uint64(field.Uint()))...)
 		case reflect.Uint: //always 64-bit
-			data = append(data, uint8(0x11)) //type of field
+			data = append(data, UINT64_TYPE) //type of field
 			data = append(data, fieldNameBytes(docTypes.Field(i).Name)...)
 			data = append(data, uint64ToBytes(uint64(field.Uint()))...)
 		case reflect.Bool:
-			data = append(data, uint8(0x08)) //type of field
+			data = append(data, BOOL_TYPE) //type of field
 			data = append(data, fieldNameBytes(docTypes.Field(i).Name)...)
 			data = append(data, boolToBytes(bool(field.Bool()))...)
 		case reflect.Interface: //this is null case??
-			data = append(data, uint8(0x0A)) //type of field
+			data = append(data, NULL_TYPE) //type of field
 			data = append(data, fieldNameBytes(docTypes.Field(i).Name)...)
 
 		case reflect.Float64:
-			data = append(data, uint8(0x01)) //type of field
+			data = append(data, FLOAT64_TYPE) //type of field
 			data = append(data, fieldNameBytes(docTypes.Field(i).Name)...)
 			data = append(data, float64ToBytes(float64(field.Float()))...)
 		case reflect.Slice: //all slices, including binary data
 			//fmt.Println("in buildBytes: ", field.Type())
 			switch field.Type() {
-			case reflect.TypeOf(make([]string, 0)):
-				data = append(data, uint8(0x04)) //type of field
-				data = append(data, fieldNameBytes(docTypes.Field(i).Name)...)
-				data = append(data, buildDocumentBytes(field.Interface())...)
-
-				the size of the array is off by a bit.
-
-				//build a document under this document
-
 			case reflect.TypeOf(make([]uint8, 0)):
 				//binary data
-				data = append(data, uint8(0x05)) //var type - binary data
+				data = append(data, BINARY_TYPE) //var type - binary data
 				data = append(data, fieldNameBytes(docTypes.Field(i).Name)...)
 				data = append(data, int32ToBytes(int32(len(field.Bytes())))...) //add length of binary value
 				//TODO add function for subtypes
 				data = append(data, uint8(0x00))              //Add the subtype
 				data = append(data, []byte(field.Bytes())...) //field value
+			//case reflect.TypeOf(make([]string, 0)):
+			default: //default is all other array types
+				data = append(data, ARRAY_TYPE) //type of field
+				data = append(data, fieldNameBytes(docTypes.Field(i).Name)...)
+				data = append(data, buildDocumentBytes(field.Interface())...)
 			}
 
 			//TODO do the same things as slices for Arrays

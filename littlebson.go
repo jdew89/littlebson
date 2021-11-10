@@ -14,6 +14,20 @@ func check(e error) {
 	}
 }
 
+//byte values for bson types
+const (
+	FLOAT64_TYPE  uint8 = 0x01
+	STRING_TYPE         = 0x02
+	DOCUMENT_TYPE       = 0x03
+	ARRAY_TYPE          = 0x04
+	BINARY_TYPE         = 0x05
+	BOOL_TYPE           = 0x08
+	NULL_TYPE           = 0x0A
+	INT32_TYPE          = 0x10
+	UINT64_TYPE         = 0x11
+	INT64_TYPE          = 0x12
+)
+
 type Athing struct {
 	TestStr string
 	Num64   int64
@@ -197,12 +211,12 @@ func setDocumentFieldValue(document *reflect.Value, field_value interface{}, typ
 		document.Field(field_num).SetString(reflect.ValueOf(field_value).String())
 	case 0x05:
 		document.Field(field_num).SetBytes(reflect.ValueOf(field_value).Bytes())
-	case 0x10:
-		document.Field(field_num).SetInt(reflect.ValueOf(field_value).Int())
 	case 0x08:
 		document.Field(field_num).SetBool(reflect.ValueOf(field_value).Bool())
 	case 0x0A: //null
 		//document.Field(field_num)
+	case 0x10:
+		document.Field(field_num).SetInt(reflect.ValueOf(field_value).Int())
 	case 0x11: //timestamp
 		document.Field(field_num).SetUint(reflect.ValueOf(field_value).Uint())
 	case 0x12:
