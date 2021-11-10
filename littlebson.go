@@ -205,21 +205,21 @@ func readOneDocument(reader *bufio.Reader) (interface{}, error) {
 //sets the value of the given field with the appropiate type
 func setDocumentFieldValue(document *reflect.Value, field_value interface{}, typebyte byte, field_num int) {
 	switch typebyte {
-	case 0x01:
+	case FLOAT64_TYPE:
 		document.Field(field_num).SetFloat(reflect.ValueOf(field_value).Float())
-	case 0x02:
+	case STRING_TYPE:
 		document.Field(field_num).SetString(reflect.ValueOf(field_value).String())
-	case 0x05:
+	case BINARY_TYPE:
 		document.Field(field_num).SetBytes(reflect.ValueOf(field_value).Bytes())
-	case 0x08:
+	case BOOL_TYPE:
 		document.Field(field_num).SetBool(reflect.ValueOf(field_value).Bool())
-	case 0x0A: //null
+	case NULL_TYPE: //null
 		//document.Field(field_num)
-	case 0x10:
+	case INT32_TYPE:
 		document.Field(field_num).SetInt(reflect.ValueOf(field_value).Int())
-	case 0x11: //timestamp
+	case UINT64_TYPE: //timestamp
 		document.Field(field_num).SetUint(reflect.ValueOf(field_value).Uint())
-	case 0x12:
+	case INT64_TYPE:
 		document.Field(field_num).SetInt(reflect.ValueOf(field_value).Int())
 	}
 }
@@ -228,30 +228,30 @@ func setDocumentFieldValue(document *reflect.Value, field_value interface{}, typ
 //returns the value
 func readFieldValue(typebyte byte, doc_bytes []byte, p *int32) interface{} {
 	switch typebyte {
-	case 0x01:
+	case FLOAT64_TYPE:
 		fieldvalue := readFloat64Value(doc_bytes[:], p)
 		return fieldvalue
-	case 0x02:
+	case STRING_TYPE:
 		fieldvalue := readStringValue(doc_bytes[:], p)
 		return *fieldvalue
-	case 0x05:
+	case BINARY_TYPE:
 		fieldvalue := readBinaryDataValue(doc_bytes[:], p)
 		return *fieldvalue
-	case 0x08:
+	case BOOL_TYPE:
 		fieldvalue := readBoolValue(doc_bytes[:], p)
 		return fieldvalue
 		//return reflect.TypeOf(true)
-	case 0x0A:
+	case NULL_TYPE:
 		return nil
 		//var i interface{}
 		//return reflect.TypeOf(i)
-	case 0x10:
+	case INT32_TYPE:
 		fieldvalue := readInt32Value(doc_bytes[:], p)
 		return fieldvalue
-	case 0x11: //timestamp
+	case UINT64_TYPE: //timestamp
 		fieldvalue := readUint64Value(doc_bytes[:], p)
 		return fieldvalue
-	case 0x12:
+	case INT64_TYPE:
 		fieldvalue := readInt64Value(doc_bytes[:], p)
 		return fieldvalue
 	}
