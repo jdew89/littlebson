@@ -46,7 +46,7 @@ type Blarg struct {
 	Boolean bool
 	Float   float64
 	Binary  []byte
-	StrArr  []string
+	Array   []interface{}
 }
 
 type SearchDocument struct {
@@ -69,10 +69,10 @@ func main() {
 	mybytes[0] = 0x68
 	mybytes[1] = 0x69
 
-	mystringarr := make([]string, 3)
-	mystringarr[0] = "hello "
-	mystringarr[1] = "cruel "
-	mystringarr[2] = "world!"
+	mystringarr := make([]interface{}, 3)
+	mystringarr[0] = "i have an int:"
+	mystringarr[1] = 1234
+	mystringarr[2] = "Did you see it?"
 
 	/*test := reflect.ValueOf(mystringarr)
 	fmt.Println(test)

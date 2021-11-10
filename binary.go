@@ -18,27 +18,67 @@ func buildDocumentBytes(doc interface{}) []byte {
 	docTypes := docInterface.Type() //used to get field names
 	var data []byte
 
-	fmt.Println("in build docbytes: ", docTypes)
-	fmt.Println(docInterface)
+	something is off. It generated a bunch of null values between 0 in array and the start of the string
 
-	//since arrays are also documents, if this sees an array, build it like a document
-	switch docTypes {
-	case reflect.TypeOf(make([]uint8, 0)):
-
-	case reflect.TypeOf(make([]string, 0)):
-		str_slice := docInterface.Interface().([]string)
-
-		for i := 0; i < len(str_slice); i++ {
-			data = append(data, STRING_TYPE)                               //var type - String
-			data = append(data, fieldNameBytes(strconv.Itoa(i))...)        //converts the int to a string for the name
-			data = append(data, int32ToBytes(int32(len(str_slice[i])))...) //add length of string value (add 1 for null terminator)
-			data = append(data, []byte(str_slice[i])...)                   //field value
-			data = append(data, uint8(0))                                  //terminate the string
+	fmt.Println("in build docbytes")
+	fmt.Println("type: ", docTypes)
+	fmt.Println("kind: ", docInterface.Kind())
+	fmt.Println("value: ", docInterface)
+	if docInterface.Kind() == reflect.Slice || docInterface.Kind() == reflect.Array {
+		interface_slice := docInterface.Interface().([]interface{})
+		for i := 0; i < len(interface_slice); i++ {
+			if reflect.ValueOf(interface_slice[i]).Kind() == reflect.String {
+				data = append(data, STRING_TYPE)                                         //var type - String
+				data = append(data, fieldNameBytes(strconv.Itoa(i))...)                  //converts the int to a string for the name
+				data = append(data, generateStringBytes(interface_slice[i].(string))...) //add length of string value (add 1 for null terminator)
+			}
+			if reflect.ValueOf(interface_slice[i]).Kind() == reflect.Int {
+				data = append(data, INT64_TYPE)                                       //var type
+				data = append(data, fieldNameBytes(strconv.Itoa(i))...)               //converts the int to a string for the name
+				data = append(data, int64ToBytes(int64(interface_slice[i].(int)))...) //add length of string value (add 1 for null terminator)
+			}
+			if reflect.ValueOf(interface_slice[i]).Kind() == reflect.Int64 {
+				data = append(data, INT64_TYPE)                         //var type
+				data = append(data, fieldNameBytes(strconv.Itoa(i))...) //converts the int to a string for the name
+				data = append(data, int64ToBytes(interface_slice[i].(int64))...)
+			}
 		}
 
 		data = endOfDocumentBytes(data[:])
 		return data[:]
 	}
+	/*
+		//since arrays are also documents, if this sees an array, build it like a document
+		switch docTypes {
+		case reflect.TypeOf(make([]uint8, 0)):
+
+		case reflect.TypeOf(make([]string, 0)):
+			str_slice := docInterface.Interface().([]string)
+
+			for i := 0; i < len(str_slice); i++ {
+				data = append(data, STRING_TYPE)                               //var type - String
+				data = append(data, fieldNameBytes(strconv.Itoa(i))...)        //converts the int to a string for the name
+				data = append(data, int32ToBytes(int32(len(str_slice[i])))...) //add length of string value (add 1 for null terminator)
+				data = append(data, []byte(str_slice[i])...)                   //field value
+				data = append(data, uint8(0))                                  //terminate the string
+			}
+
+			data = endOfDocumentBytes(data[:])
+			return data[:]
+		case reflect.TypeOf(make([]int64, 0)):
+			str_slice := docInterface.Interface().([]string)
+
+			for i := 0; i < len(str_slice); i++ {
+				data = append(data, STRING_TYPE)                               //var type - String
+				data = append(data, fieldNameBytes(strconv.Itoa(i))...)        //converts the int to a string for the name
+				data = append(data, int32ToBytes(int32(len(str_slice[i])))...) //add length of string value (add 1 for null terminator)
+				data = append(data, []byte(str_slice[i])...)                   //field value
+				data = append(data, uint8(0))                                  //terminate the string
+			}
+
+			data = endOfDocumentBytes(data[:])
+			return data[:]
+		}*/
 
 	//loops through fields of the struct
 	for i := 0; i < docInterface.NumField(); i++ {
@@ -48,9 +88,7 @@ func buildDocumentBytes(doc interface{}) []byte {
 		case reflect.String:
 			data = append(data, STRING_TYPE) //var type - String
 			data = append(data, fieldNameBytes(docTypes.Field(i).Name)...)
-			data = append(data, int32ToBytes(int32(len(field.String())+1))...) //add length of string value (add 1 for null terminator)
-			data = append(data, []byte(field.String())...)                     //field value
-			data = append(data, uint8(0))                                      //terminate the string
+			data = append(data, generateStringBytes(field.String())...) //add length of string value (add 1 for null terminator)
 		case reflect.Int:
 			//https://golang.org/doc/install/source#environment
 			bit_32_list := [5]string{"386", "arm", "mipsle", "mips", "wasm"}
@@ -130,6 +168,16 @@ func buildDocumentBytes(doc interface{}) []byte {
 
 	return data[:]
 
+}
+
+//generates bytes for a string. Includes the length at the beginning and null value at the end.
+func generateStringBytes(str string) []byte {
+	data := make([]byte, len(str))
+	data = append(data, int32ToBytes(int32(len(str)+1))...) //add length of string value (add 1 for null terminator)
+	data = append(data, []byte(str)...)                     //field value
+	data = append(data, uint8(0))                           //terminate the string
+
+	return data[:]
 }
 
 //returns the bytes used to finish a document including the total size of the document
