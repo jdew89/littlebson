@@ -24,139 +24,240 @@ func buildDocumentBytes(doc interface{}) []byte {
 	fmt.Println("value: ", docInterface)
 	if docInterface.Kind() == reflect.Slice || docInterface.Kind() == reflect.Array {
 		fmt.Println("It's a: ", docInterface.Kind())
-		interface_slice := docInterface.Interface().([]interface{})
-		for i := 0; i < len(interface_slice); i++ {
-			if reflect.ValueOf(interface_slice[i]).Kind() == reflect.String {
-				data = append(data, STRING_TYPE)                                         //var type - String
-				data = append(data, fieldNameBytes(strconv.Itoa(i))...)                  //converts the int to a string for the name
-				data = append(data, generateStringBytes(interface_slice[i].(string))...) //add length of string value (add 1 for null terminator)
-			}
-			if reflect.ValueOf(interface_slice[i]).Kind() == reflect.Int {
-				data = append(data, INT64_TYPE)                                       //var type
-				data = append(data, fieldNameBytes(strconv.Itoa(i))...)               //converts the int to a string for the name
-				data = append(data, int64ToBytes(int64(interface_slice[i].(int)))...) //add length of string value (add 1 for null terminator)
-			}
-			if reflect.ValueOf(interface_slice[i]).Kind() == reflect.Int64 {
-				data = append(data, INT64_TYPE)                         //var type
-				data = append(data, fieldNameBytes(strconv.Itoa(i))...) //converts the int to a string for the name
-				data = append(data, int64ToBytes(interface_slice[i].(int64))...)
-			}
-		}
 
-		data = endOfDocumentBytes(data[:])
-		return data[:]
-	}
-	/*
-		//since arrays are also documents, if this sees an array, build it like a document
-		switch docTypes {
-		case reflect.TypeOf(make([]uint8, 0)):
+		//TODO: this conversion runs in O(n) time. Can just add more cases to account for single type arrays
 
-		case reflect.TypeOf(make([]string, 0)):
-			str_slice := docInterface.Interface().([]string)
+		//if slice is not an interface slice, convert to an interface
+		if docTypes == reflect.TypeOf(make([]interface{}, 0)) || docTypes == reflect.TypeOf([0]interface{}{}) {
 
-			for i := 0; i < len(str_slice); i++ {
-				data = append(data, STRING_TYPE)                               //var type - String
-				data = append(data, fieldNameBytes(strconv.Itoa(i))...)        //converts the int to a string for the name
-				data = append(data, int32ToBytes(int32(len(str_slice[i])))...) //add length of string value (add 1 for null terminator)
-				data = append(data, []byte(str_slice[i])...)                   //field value
-				data = append(data, uint8(0))                                  //terminate the string
-			}
-
-			data = endOfDocumentBytes(data[:])
-			return data[:]
-		case reflect.TypeOf(make([]int64, 0)):
-			str_slice := docInterface.Interface().([]string)
-
-			for i := 0; i < len(str_slice); i++ {
-				data = append(data, STRING_TYPE)                               //var type - String
-				data = append(data, fieldNameBytes(strconv.Itoa(i))...)        //converts the int to a string for the name
-				data = append(data, int32ToBytes(int32(len(str_slice[i])))...) //add length of string value (add 1 for null terminator)
-				data = append(data, []byte(str_slice[i])...)                   //field value
-				data = append(data, uint8(0))                                  //terminate the string
-			}
-
-			data = endOfDocumentBytes(data[:])
-			return data[:]
-		}*/
-
-	//loops through fields of the struct
-	for i := 0; i < docInterface.NumField(); i++ {
-		field := docInterface.Field(i)
-
-		switch field.Kind() {
-		case reflect.String:
-			data = append(data, STRING_TYPE) //var type - String
-			data = append(data, fieldNameBytes(docTypes.Field(i).Name)...)
-			data = append(data, generateStringBytes(field.String())...) //add length of string value (add 1 for null terminator)
-		case reflect.Int:
-			//https://golang.org/doc/install/source#environment
-			bit_32_list := [5]string{"386", "arm", "mipsle", "mips", "wasm"}
-			is_32_bit := false
-			for i := range bit_32_list {
-				fmt.Println(runtime.GOARCH, " == ", bit_32_list[i], " ", runtime.GOARCH == bit_32_list[i])
-				if runtime.GOARCH == bit_32_list[i] {
+			interface_slice := docInterface.Interface().([]interface{})
+			for i := 0; i < len(interface_slice); i++ {
+				switch reflect.ValueOf(interface_slice[i]).Kind() {
+				case reflect.String:
+					data = append(data, STRING_TYPE)                                         //var type - String
+					data = append(data, fieldNameBytes(strconv.Itoa(i))...)                  //converts the int to a string for the name
+					data = append(data, generateStringBytes(interface_slice[i].(string))...) //add length of string value (add 1 for null terminator)
+				case reflect.Int:
+					data = append(data, INT64_TYPE)                                       //var type
+					data = append(data, fieldNameBytes(strconv.Itoa(i))...)               //converts the int to a string for the name
+					data = append(data, int64ToBytes(int64(interface_slice[i].(int)))...) //add length of string value (add 1 for null terminator)
+				case reflect.Int32:
 					data = append(data, INT32_TYPE) //type of field
-					data = append(data, fieldNameBytes(docTypes.Field(i).Name)...)
-					data = append(data, int32ToBytes(int32(field.Int()))...)
-					is_32_bit = true
-					break
+					data = append(data, fieldNameBytes(strconv.Itoa(i))...)
+					data = append(data, int32ToBytes(interface_slice[i].(int32))...)
+				case reflect.Int64:
+					data = append(data, INT64_TYPE)                         //var type
+					data = append(data, fieldNameBytes(strconv.Itoa(i))...) //converts the int to a string for the name
+					data = append(data, int64ToBytes(interface_slice[i].(int64))...)
+				case reflect.Uint64: //timestamp
+					data = append(data, UINT64_TYPE) //type of field
+					data = append(data, fieldNameBytes(strconv.Itoa(i))...)
+					data = append(data, uint64ToBytes(interface_slice[i].(uint64))...)
+				case reflect.Uint: //always 64-bit
+					data = append(data, UINT64_TYPE) //type of field
+					data = append(data, fieldNameBytes(strconv.Itoa(i))...)
+					data = append(data, uint64ToBytes(interface_slice[i].(uint64))...)
+				case reflect.Bool:
+					data = append(data, BOOL_TYPE) //type of field
+					data = append(data, fieldNameBytes(strconv.Itoa(i))...)
+					data = append(data, boolToBytes(interface_slice[i].(bool))...)
+				case reflect.Float64:
+					data = append(data, FLOAT64_TYPE) //type of field
+					data = append(data, fieldNameBytes(strconv.Itoa(i))...)
+					data = append(data, float64ToBytes(interface_slice[i].(float64))...)
+				case reflect.Slice, reflect.Array: //all slices or arrays, including binary data
+					//fmt.Println("in buildBytes: ", field.Type())
+					switch reflect.ValueOf(interface_slice[i]).Type() {
+					case reflect.TypeOf(make([]uint8, 0)), reflect.TypeOf([0]uint8{}): // if type is byte slice or array
+						data = append(data, BINARY_TYPE) //var type - binary data
+						data = append(data, fieldNameBytes(strconv.Itoa(i))...)
+						data = append(data, int32ToBytes(int32(len(interface_slice[i].([]byte))))...) //add length of binary value
+						//TODO add function for subtypes
+						data = append(data, uint8(0x00))                            //Add the subtype
+						data = append(data, []byte(interface_slice[i].([]byte))...) //field value
+					default: //default is all other array/slice types
+						data = append(data, ARRAY_TYPE) //type of field
+						data = append(data, fieldNameBytes(strconv.Itoa(i))...)
+						data = append(data, buildDocumentBytes(interface_slice[i])...)
+					}
+				case reflect.Struct:
+					data = append(data, DOCUMENT_TYPE)
+					data = append(data, fieldNameBytes(strconv.Itoa(i))...)
+					data = append(data, buildDocumentBytes(interface_slice[i])...)
 				}
 			}
+		} else { //if this is array has an implicit type
+			//find type of array and type cast it.
+			switch docInterface.Type() {
+			case reflect.TypeOf(make([]string, 0)), reflect.TypeOf([0]string{}):
+				slice := doc.([]string)
+				for i := 0; i < len(slice); i++ {
+					data = append(data, STRING_TYPE)                        //var type - String
+					data = append(data, fieldNameBytes(strconv.Itoa(i))...) //converts the int to a string for the name
+					data = append(data, generateStringBytes(slice[i])...)   //add length of string value (add 1 for null terminator)
+				}
+			case reflect.TypeOf(make([]int, 0)), reflect.TypeOf([0]int{}):
+				slice := doc.([]int)
+				for i := 0; i < len(slice); i++ {
+					data = append(data, INT64_TYPE)                         //var type
+					data = append(data, fieldNameBytes(strconv.Itoa(i))...) //converts the int to a string for the name
+					data = append(data, int64ToBytes(int64(slice[i]))...)   //add length of string value (add 1 for null terminator)
+				}
+			case reflect.TypeOf(make([]int32, 0)), reflect.TypeOf([0]int32{}):
+				slice := doc.([]int32)
+				for i := 0; i < len(slice); i++ {
+					data = append(data, INT32_TYPE) //type of field
+					data = append(data, fieldNameBytes(strconv.Itoa(i))...)
+					data = append(data, int32ToBytes(slice[i])...)
+				}
+			case reflect.TypeOf(make([]int64, 0)), reflect.TypeOf([0]int64{}):
+				slice := doc.([]int64)
+				for i := 0; i < len(slice); i++ {
+					data = append(data, INT64_TYPE)                         //var type
+					data = append(data, fieldNameBytes(strconv.Itoa(i))...) //converts the int to a string for the name
+					data = append(data, int64ToBytes(slice[i])...)
+				}
+			case reflect.TypeOf(make([]uint64, 0)), reflect.TypeOf([0]uint64{}):
+				slice := doc.([]uint64)
+				for i := 0; i < len(slice); i++ {
+					data = append(data, UINT64_TYPE) //type of field
+					data = append(data, fieldNameBytes(strconv.Itoa(i))...)
+					data = append(data, uint64ToBytes(slice[i])...)
+				}
+			case reflect.TypeOf(make([]uint, 0)), reflect.TypeOf([0]uint{}):
+				slice := doc.([]uint)
+				for i := 0; i < len(slice); i++ {
+					data = append(data, UINT64_TYPE) //type of field
+					data = append(data, fieldNameBytes(strconv.Itoa(i))...)
+					data = append(data, uint64ToBytes(uint64(slice[i]))...)
+				}
+			case reflect.TypeOf(make([]bool, 0)), reflect.TypeOf([0]bool{}):
+				slice := doc.([]bool)
+				for i := 0; i < len(slice); i++ {
+					data = append(data, BOOL_TYPE) //type of field
+					data = append(data, fieldNameBytes(strconv.Itoa(i))...)
+					data = append(data, boolToBytes(slice[i])...)
+				}
+			case reflect.TypeOf(make([]float64, 0)), reflect.TypeOf([0]float64{}):
+				slice := doc.([]float64)
+				for i := 0; i < len(slice); i++ {
+					data = append(data, FLOAT64_TYPE) //type of field
+					data = append(data, fieldNameBytes(strconv.Itoa(i))...)
+					data = append(data, float64ToBytes(slice[i])...)
+				}
+			case reflect.TypeOf(make([]byte, 0)), reflect.TypeOf([0]byte{}): //binary chunk
+				slice := doc.([]byte)
+				for i := 0; i < len(slice); i++ {
+					data = append(data, BINARY_TYPE) //var type - binary data
+					data = append(data, fieldNameBytes(strconv.Itoa(i))...)
+					data = append(data, int32ToBytes(int32(len(slice)))...) //add length of binary value
+					//TODO add function for subtypes
+					data = append(data, uint8(0x00))      //Add the subtype
+					data = append(data, []byte(slice)...) //field value
+				}
+			default:
+				switch docInterface.Kind() {
 
-			if !is_32_bit {
+				case reflect.Slice, reflect.Array:
+					interface_slice := doc.([]interface{})
+					for i := 0; i < len(interface_slice); i++ {
+						data = append(data, ARRAY_TYPE) //type of field
+						data = append(data, fieldNameBytes(strconv.Itoa(i))...)
+						data = append(data, buildDocumentBytes(interface_slice[i])...)
+					}
+
+				case reflect.Struct:
+					interface_slice := doc.([]interface{})
+					for i := 0; i < len(interface_slice); i++ {
+						data = append(data, DOCUMENT_TYPE)
+						data = append(data, fieldNameBytes(strconv.Itoa(i))...)
+						data = append(data, buildDocumentBytes(interface_slice[i])...)
+					}
+				}
+			}
+		}
+	}
+
+	//TODO need to add support for a map - treat it like a struct?
+
+	if docInterface.Kind() == reflect.Struct {
+		//loops through fields of the struct
+		for i := 0; i < docInterface.NumField(); i++ {
+			field := docInterface.Field(i)
+
+			switch field.Kind() {
+			case reflect.String:
+				data = append(data, STRING_TYPE) //var type - String
+				data = append(data, fieldNameBytes(docTypes.Field(i).Name)...)
+				data = append(data, generateStringBytes(field.String())...) //add length of string value (add 1 for null terminator)
+			case reflect.Int:
+				//https://golang.org/doc/install/source#environment
+				bit_32_list := [5]string{"386", "arm", "mipsle", "mips", "wasm"}
+				is_32_bit := false
+				for i := range bit_32_list {
+					fmt.Println(runtime.GOARCH, " == ", bit_32_list[i], " ", runtime.GOARCH == bit_32_list[i])
+					if runtime.GOARCH == bit_32_list[i] {
+						data = append(data, INT32_TYPE) //type of field
+						data = append(data, fieldNameBytes(docTypes.Field(i).Name)...)
+						data = append(data, int32ToBytes(int32(field.Int()))...)
+						is_32_bit = true
+						break
+					}
+				}
+
+				if !is_32_bit {
+					data = append(data, INT64_TYPE) //type of field
+					data = append(data, fieldNameBytes(docTypes.Field(i).Name)...)
+					data = append(data, int64ToBytes(int64(field.Int()))...)
+				}
+			case reflect.Int64:
 				data = append(data, INT64_TYPE) //type of field
 				data = append(data, fieldNameBytes(docTypes.Field(i).Name)...)
 				data = append(data, int64ToBytes(int64(field.Int()))...)
-			}
-		case reflect.Int64:
-			data = append(data, INT64_TYPE) //type of field
-			data = append(data, fieldNameBytes(docTypes.Field(i).Name)...)
-			data = append(data, int64ToBytes(int64(field.Int()))...)
-		case reflect.Int32:
-			data = append(data, INT32_TYPE) //type of field
-			data = append(data, fieldNameBytes(docTypes.Field(i).Name)...)
-			data = append(data, int32ToBytes(int32(field.Int()))...)
-		case reflect.Uint64: //timestamp
-			data = append(data, UINT64_TYPE) //type of field
-			data = append(data, fieldNameBytes(docTypes.Field(i).Name)...)
-			data = append(data, uint64ToBytes(uint64(field.Uint()))...)
-		case reflect.Uint: //always 64-bit
-			data = append(data, UINT64_TYPE) //type of field
-			data = append(data, fieldNameBytes(docTypes.Field(i).Name)...)
-			data = append(data, uint64ToBytes(uint64(field.Uint()))...)
-		case reflect.Bool:
-			data = append(data, BOOL_TYPE) //type of field
-			data = append(data, fieldNameBytes(docTypes.Field(i).Name)...)
-			data = append(data, boolToBytes(bool(field.Bool()))...)
-		case reflect.Interface: //this is null case??
-			data = append(data, NULL_TYPE) //type of field
-			data = append(data, fieldNameBytes(docTypes.Field(i).Name)...)
-
-		case reflect.Float64:
-			data = append(data, FLOAT64_TYPE) //type of field
-			data = append(data, fieldNameBytes(docTypes.Field(i).Name)...)
-			data = append(data, float64ToBytes(float64(field.Float()))...)
-		case reflect.Slice: //all slices, including binary data
-			//fmt.Println("in buildBytes: ", field.Type())
-			switch field.Type() {
-			case reflect.TypeOf(make([]uint8, 0)):
-				//binary data
-				data = append(data, BINARY_TYPE) //var type - binary data
+			case reflect.Int32:
+				data = append(data, INT32_TYPE) //type of field
 				data = append(data, fieldNameBytes(docTypes.Field(i).Name)...)
-				data = append(data, int32ToBytes(int32(len(field.Bytes())))...) //add length of binary value
-				//TODO add function for subtypes
-				data = append(data, uint8(0x00))              //Add the subtype
-				data = append(data, []byte(field.Bytes())...) //field value
-			//case reflect.TypeOf(make([]string, 0)):
-			default: //default is all other array types
-				data = append(data, ARRAY_TYPE) //type of field
+				data = append(data, int32ToBytes(int32(field.Int()))...)
+			case reflect.Uint64: //timestamp
+				data = append(data, UINT64_TYPE) //type of field
+				data = append(data, fieldNameBytes(docTypes.Field(i).Name)...)
+				data = append(data, uint64ToBytes(uint64(field.Uint()))...)
+			case reflect.Uint: //always 64-bit
+				data = append(data, UINT64_TYPE) //type of field
+				data = append(data, fieldNameBytes(docTypes.Field(i).Name)...)
+				data = append(data, uint64ToBytes(uint64(field.Uint()))...)
+			case reflect.Bool:
+				data = append(data, BOOL_TYPE) //type of field
+				data = append(data, fieldNameBytes(docTypes.Field(i).Name)...)
+				data = append(data, boolToBytes(bool(field.Bool()))...)
+			case reflect.Interface: //this is null case
+				data = append(data, NULL_TYPE) //type of field
+				data = append(data, fieldNameBytes(docTypes.Field(i).Name)...)
+			case reflect.Float64:
+				data = append(data, FLOAT64_TYPE) //type of field
+				data = append(data, fieldNameBytes(docTypes.Field(i).Name)...)
+				data = append(data, float64ToBytes(float64(field.Float()))...)
+			case reflect.Slice, reflect.Array: //all slices or arrays, including binary data
+				//fmt.Println("in buildBytes: ", field.Type())
+				switch field.Type() {
+				case reflect.TypeOf(make([]uint8, 0)), reflect.TypeOf([0]uint8{}): // if type is byte slice or array
+					data = append(data, BINARY_TYPE) //var type - binary data
+					data = append(data, fieldNameBytes(docTypes.Field(i).Name)...)
+					data = append(data, int32ToBytes(int32(len(field.Bytes())))...) //add length of binary value
+					//TODO add function for subtypes
+					data = append(data, uint8(0x00))              //Add the subtype
+					data = append(data, []byte(field.Bytes())...) //field value
+				//case reflect.TypeOf(make([]string, 0)):
+				default: //default is all other array types
+					data = append(data, ARRAY_TYPE) //type of field
+					data = append(data, fieldNameBytes(docTypes.Field(i).Name)...)
+					data = append(data, buildDocumentBytes(field.Interface())...)
+				}
+			case reflect.Struct:
+				data = append(data, DOCUMENT_TYPE)
 				data = append(data, fieldNameBytes(docTypes.Field(i).Name)...)
 				data = append(data, buildDocumentBytes(field.Interface())...)
 			}
-
-			//TODO do the same things as slices for Arrays
-			//case reflect.Array:
-
 		}
 	}
 

@@ -38,15 +38,22 @@ type Athing struct {
 	Float   float64
 }
 
-type Blarg struct {
-	TestStr string
-	Num64   int64
+type Small struct {
+	Str     string
 	Num32   int32
-	Uint64  uint64
 	Boolean bool
-	Float   float64
-	Binary  []byte
-	Array   []interface{}
+}
+
+type Blarg struct {
+	TestStr  string
+	Num64    int64
+	Num32    int32
+	Uint64   uint64
+	Boolean  bool
+	Float    float64
+	Binary   []byte
+	Array    []interface{}
+	MyStruct interface{}
 }
 
 type SearchDocument struct {
@@ -69,12 +76,20 @@ func main() {
 	mybytes[0] = 0x68
 	mybytes[1] = 0x69
 
-	mystringarr := make([]interface{}, 3)
-	mystringarr[0] = "i have an int:"
-	mystringarr[1] = 1234
-	mystringarr[2] = "Did you see it?"
+	myarr := make([]interface{}, 7)
+	myarr[0] = "astring"
+	myarr[1] = 1234
+	myarr[2] = int32(4321)
+	myarr[3] = float64(5.5)
+	myarr[4] = true
+	myarr[5] = []int64{9, 8, 7}
+	myarr[6] = Small{"small struct", int32(32), false}
 
-	/*test := reflect.ValueOf(mystringarr)
+	myarr2 := make([][]int, 1)
+	myarr2[0] = make([]int, 1)
+	myarr2[0][0] = 5
+
+	/*test := reflect.ValueOf(myarr)
 	fmt.Println(test)
 	fmt.Println(test.Kind())
 	fmt.Println(test.Type())
@@ -83,9 +98,9 @@ func main() {
 	//return
 
 	//something := Athing{"Howedy", -1, 2000, 32134, true, nil, 12.34}
-	something := Blarg{"Duuude", -100, 100, 1234, false, 56.91, mybytes[:], mystringarr[:]}
-	//insertOne("data", mystringarr)
-	insertOne("data", something)
+	//something := Blarg{"Duuude", -100, 100, 1234, false, 56.91, mybytes[:], myarr[:], Blarg{"Duuude", -100, 100, 1234, false, 56.91, mybytes[:], myarr[:], Small{}}}
+	insertOne("data", myarr2)
+	//insertOne("data", something)
 
 	//var something Blarg
 
