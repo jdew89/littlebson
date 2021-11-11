@@ -18,13 +18,12 @@ func buildDocumentBytes(doc interface{}) []byte {
 	docTypes := docInterface.Type() //used to get field names
 	var data []byte
 
-	something is off. It generated a bunch of null values between 0 in array and the start of the string
-
 	fmt.Println("in build docbytes")
 	fmt.Println("type: ", docTypes)
 	fmt.Println("kind: ", docInterface.Kind())
 	fmt.Println("value: ", docInterface)
 	if docInterface.Kind() == reflect.Slice || docInterface.Kind() == reflect.Array {
+		fmt.Println("It's a: ", docInterface.Kind())
 		interface_slice := docInterface.Interface().([]interface{})
 		for i := 0; i < len(interface_slice); i++ {
 			if reflect.ValueOf(interface_slice[i]).Kind() == reflect.String {
@@ -172,7 +171,7 @@ func buildDocumentBytes(doc interface{}) []byte {
 
 //generates bytes for a string. Includes the length at the beginning and null value at the end.
 func generateStringBytes(str string) []byte {
-	data := make([]byte, len(str))
+	data := make([]byte, 0)
 	data = append(data, int32ToBytes(int32(len(str)+1))...) //add length of string value (add 1 for null terminator)
 	data = append(data, []byte(str)...)                     //field value
 	data = append(data, uint8(0))                           //terminate the string
