@@ -25,7 +25,34 @@ func buildDocumentBytes(doc interface{}) []byte {
 	if docInterface.Kind() == reflect.Slice || docInterface.Kind() == reflect.Array {
 		fmt.Println("in slice/array if")
 
+		working on interface arrays
+		each elem is itself an interface
+		could cast to the basic types??? not sure tho since its in a reflect obj
+		then add reflect.Interface to the array/slice case
+		That should be the only case that has inferface. but not sure yet
+		hoping to come up with a better option
+		this worked before so Im not sure what I changed to make it not like interfaces
+
+
 		for i := 0; i < docInterface.Len(); i++ {
+			fmt.Println(docInterface.Index(i).Kind())
+			fmt.Println(reflect.TypeOf(docInterface.Index(i).Interface()))
+			if docInterface.Index(i).Kind() == reflect.Interface {
+				switch docInterface.Index(i).Interface().(type) {
+				case int:
+					
+				case int32:
+				case int64:
+				case uint:
+				case uint64:
+				case string:
+
+				}
+
+				test := docInterface.Index(i).Interface()
+				fmt.Println("type of test: ", reflect.TypeOf(test))
+			}
+
 			switch docInterface.Index(i).Kind() {
 			case reflect.String:
 				data = append(data, STRING_TYPE)                                                        //var type - String
