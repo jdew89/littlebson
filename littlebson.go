@@ -85,9 +85,15 @@ func main() {
 	myarr[5] = []int64{9, 8, 7}
 	myarr[6] = Small{"small struct", int32(32), false}
 
+	type testing struct {
+		IntArr [][]int
+	}
+
 	myarr2 := make([][]int, 1)
 	myarr2[0] = make([]int, 1)
 	myarr2[0][0] = 5
+
+	tester := testing{myarr2}
 
 	/*test := reflect.ValueOf(myarr)
 	fmt.Println(test)
@@ -99,7 +105,7 @@ func main() {
 
 	//something := Athing{"Howedy", -1, 2000, 32134, true, nil, 12.34}
 	//something := Blarg{"Duuude", -100, 100, 1234, false, 56.91, mybytes[:], myarr[:], Blarg{"Duuude", -100, 100, 1234, false, 56.91, mybytes[:], myarr[:], Small{}}}
-	insertOne("data", myarr2)
+	insertOne("data", tester)
 	//insertOne("data", something)
 
 	//var something Blarg
