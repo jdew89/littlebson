@@ -25,22 +25,29 @@ func buildDocumentBytes(doc interface{}) []byte {
 	if docInterface.Kind() == reflect.Slice || docInterface.Kind() == reflect.Array {
 		fmt.Println("in slice/array if")
 
-		working on interface arrays
+		/*working on interface arrays
 		each elem is itself an interface
 		could cast to the basic types??? not sure tho since its in a reflect obj
 		then add reflect.Interface to the array/slice case
 		That should be the only case that has inferface. but not sure yet
 		hoping to come up with a better option
-		this worked before so Im not sure what I changed to make it not like interfaces
+		this worked before so Im not sure what I changed to make it not like interfaces*/
 
+		the idea here is to cast []interface{} array to the interface. Then we can loop through the array.
+		This doesnt work atm because I am still looking using reflect which is giving me these raw interface values.
+		might have to write a second loop for this but trying to avoid it first.
+		if docTypes == reflect.TypeOf(make([]interface{}, 0)) {
+			tmp := doc.([]interface{})
+			docInterface = reflect.ValueOf(tmp)
+		}
 
 		for i := 0; i < docInterface.Len(); i++ {
-			fmt.Println(docInterface.Index(i).Kind())
-			fmt.Println(reflect.TypeOf(docInterface.Index(i).Interface()))
+			//fmt.Println(docInterface.Index(i).Kind())
+			//fmt.Println(reflect.TypeOf(docInterface.Index(i).Interface()))
 			if docInterface.Index(i).Kind() == reflect.Interface {
 				switch docInterface.Index(i).Interface().(type) {
 				case int:
-					
+
 				case int32:
 				case int64:
 				case uint:
@@ -49,8 +56,8 @@ func buildDocumentBytes(doc interface{}) []byte {
 
 				}
 
-				test := docInterface.Index(i).Interface()
-				fmt.Println("type of test: ", reflect.TypeOf(test))
+				//test := docInterface.Index(i).Interface()
+				//fmt.Println("type of test: ", reflect.TypeOf(test))
 			}
 
 			switch docInterface.Index(i).Kind() {
