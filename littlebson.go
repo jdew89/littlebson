@@ -151,10 +151,8 @@ func readOneDocument(reader *bufio.Reader) (interface{}, error) {
 		FieldName     string
 		FieldTypeByte byte
 		FieldValue    interface{}
-		//ValBytes []byte //could change this to an interface, so I can keep most of my code???
 	}
 
-	//working here. store all the values in a map of this struct.
 	//Then iterate through the map (using a range) and create the reflect struct and add the values
 
 	field_num := -1
@@ -164,7 +162,7 @@ func readOneDocument(reader *bufio.Reader) (interface{}, error) {
 		thetypebyte := docBytes[p]
 		//fmt.Println("byte type:", thetypebyte, " p: ", p, " fieldnum:", field_num)
 		//fmt.Println("type:", BSONType(thetypebyte))
-		//if the type byte is null, move the pointer to the end of document and terminate loop
+		//if the type byte is 0x00, move the pointer to the end of document and terminate loop. This is the end of the document.
 		if thetypebyte == 0x00 {
 			p += 1
 			//fmt.Println("found null byte, p:", p)
@@ -202,9 +200,6 @@ func readOneDocument(reader *bufio.Reader) (interface{}, error) {
 
 	return document.Addr().Interface(), nil
 
-	//offset := 0 //tracks the offset in file
-	//b1, err := f.Read(docLenBytes)
-	//check(err)
 }
 
 //sets the value of the given field with the appropiate type
@@ -265,6 +260,60 @@ func readFieldValue(typebyte byte, doc_bytes []byte, p *int32) interface{} {
 		return fieldvalue
 	}
 	panic("Cannot read field value.")
+}
+
+func readArrayValue(doc_bytes []byte, p *int32) []interface{} {
+	var arr_val []interface{}
+
+	arr_len := bytesToInt32(doc_bytes[*p : *p+4])
+	*p = *p + 4
+
+	array_bytes := doc_bytes[*p : *p+arr_len]
+	*p = *p + arr_len
+
+	for i := int32(0); i < arr_len; i++ {
+		thetypebyte := array_bytes[i]
+
+		//if the type byte is 0x00, move the pointer to the end of document and terminate loop. This is the end of the document.
+		if thetypebyte == 0x00 {
+			//*p += 1
+			//fmt.Println("found null byte, p:", p)
+			break
+		}
+		//p += 1
+
+		readFieldValue
+
+	}
+
+	copying below for loop to the top for loop.
+
+	for p < docLen {
+		thetypebyte := docBytes[p]
+		//fmt.Println("byte type:", thetypebyte, " p: ", p, " fieldnum:", field_num)
+		//fmt.Println("type:", BSONType(thetypebyte))
+		//if the type byte is 0x00, move the pointer to the end of document and terminate loop. This is the end of the document.
+		if thetypebyte == 0x00 {
+			p += 1
+			//fmt.Println("found null byte, p:", p)
+			break
+		}
+		IM HERE IN COPYING
+		p += 1
+		field_num += 1
+
+		fieldname := readFieldName(docBytes[:], &p)
+
+		//val_map[field_num] = store_values{thetypebyte, docBytes[]}
+		field_val := readFieldValue(thetypebyte, docBytes[:], &p)
+
+		doc_data := store_values{fieldname, thetypebyte, field_val}
+		doc_map[field_num] = doc_data
+
+		//fmt.Println("end of loop, p:", p, "len of doc_map:", len(doc_map))
+	}
+
+	return arr_val
 }
 
 //pass name of struct and the type byte

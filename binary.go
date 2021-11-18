@@ -168,9 +168,7 @@ func readFieldName(doc_bytes []byte, p *int32) string {
 		k++
 	}
 
-	//fieldname, err := reader.ReadString(byte(0x00)) //null byte as delimiter
 	fieldname := string(doc_bytes[*p:k])
-	//fmt.Println("Field:", fieldname)
 
 	//move pointer past null
 	*p = k + 1
