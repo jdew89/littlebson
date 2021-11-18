@@ -77,7 +77,7 @@ func main() {
 	mybytes[1] = 0x69
 
 	myarr := make([]interface{}, 7)
-	myarr[0] = "astring"
+	myarr[0] = "IT WORKS"
 	myarr[1] = 1234
 	myarr[2] = int32(4321)
 	myarr[3] = float64(5.5)
@@ -214,6 +214,8 @@ func setDocumentFieldValue(document *reflect.Value, field_value interface{}, typ
 		document.Field(field_num).SetFloat(reflect.ValueOf(field_value).Float())
 	case STRING_TYPE:
 		document.Field(field_num).SetString(reflect.ValueOf(field_value).String())
+	case DOCUMENT_TYPE:
+	case ARRAY_TYPE:
 	case BINARY_TYPE:
 		document.Field(field_num).SetBytes(reflect.ValueOf(field_value).Bytes())
 	case BOOL_TYPE:
@@ -239,6 +241,8 @@ func readFieldValue(typebyte byte, doc_bytes []byte, p *int32) interface{} {
 	case STRING_TYPE:
 		fieldvalue := readStringValue(doc_bytes[:], p)
 		return *fieldvalue
+	case DOCUMENT_TYPE:
+	case ARRAY_TYPE:
 	case BINARY_TYPE:
 		fieldvalue := readBinaryDataValue(doc_bytes[:], p)
 		return *fieldvalue
@@ -279,24 +283,25 @@ func BSONType(b byte) reflect.Type {
 	switch b {
 	case 0x00:
 		return nil
-	case 0x01:
+	case FLOAT64_TYPE:
 		return reflect.TypeOf(float64(0))
-	case 0x02:
+	case STRING_TYPE:
 		return reflect.TypeOf(string(""))
-	case 0x05:
+	case DOCUMENT_TYPE:
+	case ARRAY_TYPE:
+	case BINARY_TYPE:
 		return reflect.TypeOf(make([]byte, 0))
-	case 0x10:
-		return reflect.TypeOf(int32(0))
-	case 0x08:
+	case BOOL_TYPE:
 		return reflect.TypeOf(true)
-	case 0x0A:
+	case NULL_TYPE:
 		//must return a closure that returns nil - otherwise reflect sees no type and is invalid
 		return reflect.TypeOf(func() interface{} { return nil })
-	case 0x11: //timestamp
+	case INT32_TYPE:
+		return reflect.TypeOf(int32(0))
+	case UINT64_TYPE: //timestamp
 		return reflect.TypeOf(uint64(0))
-	case 0x12:
+	case INT64_TYPE:
 		return reflect.TypeOf(int64(0))
 	}
 	panic("Invalid type for BSON field.")
-	//return nil
 }
