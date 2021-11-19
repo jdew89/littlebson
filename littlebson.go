@@ -34,7 +34,7 @@ type Athing struct {
 	Num32   int32
 	Uint64  uint64
 	Boolean bool
-	Blah    interface{}
+	BlahArr []string
 	Float   float64
 }
 
@@ -86,8 +86,11 @@ func main() {
 	myarr[6] = Small{"small struct", int32(32), false}
 
 	//return
+	mystrarr := make([]string, 2)
+	mystrarr[0] = "hello"
+	mystrarr[1] = "world"
 
-	something := Athing{"Duuude", -100, int32(100), 32134, true, nil, 12.34}
+	something := Athing{"Duuude", -100, int32(100), 32134, true, mystrarr, 12.34}
 	//something := Blarg{"Duuude", -100, 100, 1234, false, 56.91, mybytes[:], myarr[:], Blarg{"Duuude", -100, 100, 1234, false, 56.91, mybytes[:], myarr[:], Small{}}}
 	//insertOne("data", myarr[:])
 	insertOne("data", something)
@@ -171,15 +174,12 @@ func readOneDocument(reader *bufio.Reader) (interface{}, error) {
 
 		p += 1
 		field_num += 1
-		fmt.Println(p)
 
 		fieldname, name_size := readFieldName(docBytes[:], p)
 		p += name_size
-		fmt.Println(p)
 
 		field_val, field_size := readFieldValue(thetypebyte, docBytes[:], p)
 		p += field_size
-		fmt.Println(p)
 
 		doc_data := store_values{fieldname, thetypebyte, field_val}
 		doc_map[field_num] = doc_data
@@ -216,6 +216,7 @@ func setDocumentFieldValue(document *reflect.Value, field_value interface{}, typ
 		document.Field(field_num).SetString(field_value.(string))
 	case DOCUMENT_TYPE:
 	case ARRAY_TYPE:
+		document.Field(field_num).Set(reflect.ValueOf(field_value))
 	case BINARY_TYPE:
 		document.Field(field_num).SetBytes(field_value.([]byte))
 	case BOOL_TYPE:
@@ -243,6 +244,8 @@ func readFieldValue(typebyte byte, doc_bytes []byte, p int32) (interface{}, int3
 		return *fieldvalue, string_size
 	case DOCUMENT_TYPE:
 	case ARRAY_TYPE:
+		fieldvalue, arr_size := readArrayValue(doc_bytes[:], p)
+		return fieldvalue, arr_size
 	case BINARY_TYPE:
 		fieldvalue, binary_size := readBinaryDataValue(doc_bytes[:], p)
 		return *fieldvalue, binary_size
@@ -267,17 +270,19 @@ func readFieldValue(typebyte byte, doc_bytes []byte, p int32) (interface{}, int3
 	panic("Cannot read field value.")
 }
 
-func readArrayValue(doc_bytes []byte, p *int32) []interface{} {
+func readArrayValue(doc_bytes []byte, p int32) ([]interface{}, int32) {
 	var arr_val []interface{}
 
-	arr_len := bytesToInt32(doc_bytes[*p : *p+4])
-	*p = *p + 4
+	arr_len := bytesToInt32(doc_bytes[p : p+4])
+	fmt.Println(arr_len)
 
-	array_bytes := doc_bytes[*p : *p+arr_len]
-	*p = *p + arr_len
+	array_bytes := doc_bytes[p : p+arr_len]
+	p = p + arr_len
 
-	for i := int32(0); i < arr_len; i++ {
+	//start past the array size bytes
+	for i := int32(4); i < arr_len; {
 		thetypebyte := array_bytes[i]
+		fmt.Println("byte type:", thetypebyte, " i: ", i, "arr size: ", len(arr_val))
 
 		//if the type byte is 0x00, move the pointer to the end of document and terminate loop. This is the end of the document.
 		if thetypebyte == 0x00 {
@@ -285,9 +290,15 @@ func readArrayValue(doc_bytes []byte, p *int32) []interface{} {
 			//fmt.Println("found null byte, p:", p)
 			break
 		}
-		//p += 1
+		i += 1
 
-		//fieldname := readFieldName(doc_bytes[:], &p)
+		_, name_size := readFieldName(array_bytes[:], i)
+		i += name_size
+
+		field_val, field_size := readFieldValue(thetypebyte, array_bytes[:], i)
+		i += field_size
+
+		arr_val = append(arr_val, field_val)
 
 		//field_val := readFieldValue(thetypebyte, doc_bytes[:], &p)
 
@@ -298,7 +309,7 @@ func readArrayValue(doc_bytes []byte, p *int32) []interface{} {
 
 	}
 
-	return arr_val
+	return arr_val, arr_len
 }
 
 //pass name of struct and the type byte
@@ -323,6 +334,7 @@ func BSONType(b byte) reflect.Type {
 		return reflect.TypeOf(string(""))
 	case DOCUMENT_TYPE:
 	case ARRAY_TYPE:
+		return reflect.TypeOf(make([]interface{}, 0))
 	case BINARY_TYPE:
 		return reflect.TypeOf(make([]byte, 0))
 	case BOOL_TYPE:
