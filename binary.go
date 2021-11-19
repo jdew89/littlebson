@@ -160,20 +160,20 @@ func fieldNameBytes(name string) []byte {
 
 //pass the doc_bytes slice and the pointer value
 //gets the field name
-//moved the pointer by reference
-func readFieldName(doc_bytes []byte, p *int32) string {
-	k := *p
+//return name string and size of fieldname
+func readFieldName(doc_bytes []byte, p int32) (string, int32) {
+	k := p
 	//finds the null byte after field name
 	for doc_bytes[k] != byte(0x00) {
 		k++
 	}
 
-	fieldname := string(doc_bytes[*p:k])
+	fieldname := string(doc_bytes[p:k])
 
 	//move pointer past null
-	*p = k + 1
+	namesize := k + 1
 
-	return fieldname
+	return fieldname, namesize
 }
 
 /////////////////
@@ -183,10 +183,8 @@ func readFieldName(doc_bytes []byte, p *int32) string {
 //reads a Bool value
 //pass the docbytes slice and array pointer
 //returns the Bool value and pointer location after the string
-func readBoolValue(doc_bytes []byte, p *int32) bool {
-	int_val := bytesToBool(doc_bytes[*p])
-
-	*p += 1
+func readBoolValue(doc_bytes []byte, p int32) bool {
+	int_val := bytesToBool(doc_bytes[p])
 
 	return int_val
 }
@@ -194,10 +192,8 @@ func readBoolValue(doc_bytes []byte, p *int32) bool {
 //reads a Float64 value
 //pass the docbytes slice and array pointer
 //returns the Float64 value and pointer location after the string
-func readFloat64Value(doc_bytes []byte, p *int32) float64 {
-	int_val := bytesToFloat64(doc_bytes[*p : *p+8])
-
-	*p += 8
+func readFloat64Value(doc_bytes []byte, p int32) float64 {
+	int_val := bytesToFloat64(doc_bytes[p : p+8])
 
 	return int_val
 }
@@ -205,10 +201,8 @@ func readFloat64Value(doc_bytes []byte, p *int32) float64 {
 //reads a int64 value
 //pass the docbytes slice and array pointer
 //returns the int64 value and pointer location after the string
-func readUint64Value(doc_bytes []byte, p *int32) uint64 {
-	int_val := bytesToUint64(doc_bytes[*p : *p+8])
-
-	*p += 8
+func readUint64Value(doc_bytes []byte, p int32) uint64 {
+	int_val := bytesToUint64(doc_bytes[p : p+8])
 
 	return int_val
 }
@@ -216,10 +210,8 @@ func readUint64Value(doc_bytes []byte, p *int32) uint64 {
 //reads a int64 value
 //pass the docbytes slice and array pointer
 //returns the int64 value and pointer location after the string
-func readInt64Value(doc_bytes []byte, p *int32) int64 {
-	int_val := bytesToInt64(doc_bytes[*p : *p+8])
-
-	*p += 8
+func readInt64Value(doc_bytes []byte, p int32) int64 {
+	int_val := bytesToInt64(doc_bytes[p : p+8])
 
 	return int_val
 }
@@ -227,10 +219,8 @@ func readInt64Value(doc_bytes []byte, p *int32) int64 {
 //reads a int32 value
 //pass the docbytes slice and array pointer
 //returns the int64 value and pointer location after the string
-func readInt32Value(doc_bytes []byte, p *int32) int32 {
-	int_val := bytesToInt32(doc_bytes[*p : *p+4])
-
-	*p += 4
+func readInt32Value(doc_bytes []byte, p int32) int32 {
+	int_val := bytesToInt32(doc_bytes[p : p+4])
 
 	return int_val
 }
@@ -239,36 +229,35 @@ func readInt32Value(doc_bytes []byte, p *int32) int32 {
 //pass the docbytes slice and array pointer
 //returns the string value
 //moves the pointer by reference
-func readStringValue(doc_bytes []byte, p *int32) *string {
-	str_len := bytesToInt32(doc_bytes[*p : *p+4])
-	*p = *p + 4
+func readStringValue(doc_bytes []byte, p int32) (*string, int32) {
+	str_len := bytesToInt32(doc_bytes[p : p+4])
+	p = p + 4
 
 	//fmt.Println("str len:", str_len)
 
-	field_string := string(doc_bytes[*p : *p+str_len-1]) //-1 for the null byte at the end
-	*p = *p + str_len
+	field_string := string(doc_bytes[p : p+str_len-1]) //-1 for the null byte at the end
+	p = p + str_len
 	//fmt.Println("field str:", field_string, " p: ", *p)
 
-	return &field_string
+	return &field_string, str_len
 }
 
-func readBinaryDataValue(doc_bytes []byte, p *int32) *[]byte {
-	bytes_len := bytesToInt32(doc_bytes[*p : *p+4])
-	*p = *p + 4
+func readBinaryDataValue(doc_bytes []byte, p int32) (*[]byte, int32) {
+	bytes_len := bytesToInt32(doc_bytes[p : p+4])
+	p = p + 4
 
 	// TODO: add logic for subtypes?
 	//subtype := byte(doc_bytes[*p])
-	*p = *p + 1
+	p = p + 1
 	/*switch subtype {
 	case 0x00: //generic binary
 		return doc_bytes[*p : *p+bytes_len]
 	default:
 	}*/
 
-	byte_array := doc_bytes[*p : *p+bytes_len]
-	*p = *p + bytes_len
+	byte_array := doc_bytes[p : p+bytes_len]
 
-	return &byte_array
+	return &byte_array, bytes_len
 
 }
 

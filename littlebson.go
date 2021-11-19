@@ -87,10 +87,10 @@ func main() {
 
 	//return
 
-	//something := Athing{"Howedy", -1, 2000, 32134, true, nil, 12.34}
+	something := Athing{"Duuude", -100, int32(100), 32134, true, nil, 12.34}
 	//something := Blarg{"Duuude", -100, 100, 1234, false, 56.91, mybytes[:], myarr[:], Blarg{"Duuude", -100, 100, 1234, false, 56.91, mybytes[:], myarr[:], Small{}}}
-	insertOne("data", myarr[:])
-	//insertOne("data", something)
+	//insertOne("data", myarr[:])
+	insertOne("data", something)
 
 	//var something Blarg
 
@@ -171,10 +171,11 @@ func readOneDocument(reader *bufio.Reader) (interface{}, error) {
 		p += 1
 		field_num += 1
 
-		fieldname := readFieldName(docBytes[:], &p)
+		fieldname, name_size := readFieldName(docBytes[:], p)
+		p += name_size
 
-		//val_map[field_num] = store_values{thetypebyte, docBytes[]}
-		field_val := readFieldValue(thetypebyte, docBytes[:], &p)
+		field_val, field_size := readFieldValue(thetypebyte, docBytes[:], p)
+		p += field_size
 
 		doc_data := store_values{fieldname, thetypebyte, field_val}
 		doc_map[field_num] = doc_data
@@ -206,58 +207,59 @@ func readOneDocument(reader *bufio.Reader) (interface{}, error) {
 func setDocumentFieldValue(document *reflect.Value, field_value interface{}, typebyte byte, field_num int) {
 	switch typebyte {
 	case FLOAT64_TYPE:
-		document.Field(field_num).SetFloat(reflect.ValueOf(field_value).Float())
+		document.Field(field_num).SetFloat(field_value.(float64))
 	case STRING_TYPE:
-		document.Field(field_num).SetString(reflect.ValueOf(field_value).String())
+		document.Field(field_num).SetString(field_value.(string))
 	case DOCUMENT_TYPE:
 	case ARRAY_TYPE:
 	case BINARY_TYPE:
-		document.Field(field_num).SetBytes(reflect.ValueOf(field_value).Bytes())
+		document.Field(field_num).SetBytes(field_value.([]byte))
 	case BOOL_TYPE:
-		document.Field(field_num).SetBool(reflect.ValueOf(field_value).Bool())
+		document.Field(field_num).SetBool(field_value.(bool))
 	case NULL_TYPE: //null
 		//document.Field(field_num)
 	case INT32_TYPE:
-		document.Field(field_num).SetInt(reflect.ValueOf(field_value).Int())
+		//TODO this is casting to an int64 but is supposed to be an int32
+		document.Field(field_num).SetInt(field_value.(int64))
 	case UINT64_TYPE: //timestamp
-		document.Field(field_num).SetUint(reflect.ValueOf(field_value).Uint())
+		document.Field(field_num).SetUint(field_value.(uint64))
 	case INT64_TYPE:
-		document.Field(field_num).SetInt(reflect.ValueOf(field_value).Int())
+		document.Field(field_num).SetInt(field_value.(int64))
 	}
 }
 
 //determins what type to read from bytes. Reads the bytes and moves the pointer to after the value
 //returns the value
-func readFieldValue(typebyte byte, doc_bytes []byte, p *int32) interface{} {
+func readFieldValue(typebyte byte, doc_bytes []byte, p int32) (interface{}, int32) {
 	switch typebyte {
 	case FLOAT64_TYPE:
 		fieldvalue := readFloat64Value(doc_bytes[:], p)
-		return fieldvalue
+		return fieldvalue, 8
 	case STRING_TYPE:
-		fieldvalue := readStringValue(doc_bytes[:], p)
-		return *fieldvalue
+		fieldvalue, string_size := readStringValue(doc_bytes[:], p)
+		return *fieldvalue, string_size
 	case DOCUMENT_TYPE:
 	case ARRAY_TYPE:
 	case BINARY_TYPE:
-		fieldvalue := readBinaryDataValue(doc_bytes[:], p)
-		return *fieldvalue
+		fieldvalue, binary_size := readBinaryDataValue(doc_bytes[:], p)
+		return *fieldvalue, binary_size
 	case BOOL_TYPE:
 		fieldvalue := readBoolValue(doc_bytes[:], p)
-		return fieldvalue
+		return fieldvalue, 1
 		//return reflect.TypeOf(true)
 	case NULL_TYPE:
-		return nil
+		return nil, 0
 		//var i interface{}
 		//return reflect.TypeOf(i)
 	case INT32_TYPE:
 		fieldvalue := readInt32Value(doc_bytes[:], p)
-		return fieldvalue
+		return fieldvalue, 4
 	case UINT64_TYPE: //timestamp
 		fieldvalue := readUint64Value(doc_bytes[:], p)
-		return fieldvalue
+		return fieldvalue, 8
 	case INT64_TYPE:
 		fieldvalue := readInt64Value(doc_bytes[:], p)
-		return fieldvalue
+		return fieldvalue, 8
 	}
 	panic("Cannot read field value.")
 }
@@ -282,35 +284,15 @@ func readArrayValue(doc_bytes []byte, p *int32) []interface{} {
 		}
 		//p += 1
 
-		readFieldValue
+		//fieldname := readFieldName(doc_bytes[:], &p)
 
-	}
+		//field_val := readFieldValue(thetypebyte, doc_bytes[:], &p)
 
-	copying below for loop to the top for loop.
+		//doc_data := store_values{fieldname, thetypebyte, field_val}
+		//doc_map[field_num] = doc_data
 
-	for p < docLen {
-		thetypebyte := docBytes[p]
-		//fmt.Println("byte type:", thetypebyte, " p: ", p, " fieldnum:", field_num)
-		//fmt.Println("type:", BSONType(thetypebyte))
-		//if the type byte is 0x00, move the pointer to the end of document and terminate loop. This is the end of the document.
-		if thetypebyte == 0x00 {
-			p += 1
-			//fmt.Println("found null byte, p:", p)
-			break
-		}
-		IM HERE IN COPYING
-		p += 1
-		field_num += 1
+		//readFieldValue
 
-		fieldname := readFieldName(docBytes[:], &p)
-
-		//val_map[field_num] = store_values{thetypebyte, docBytes[]}
-		field_val := readFieldValue(thetypebyte, docBytes[:], &p)
-
-		doc_data := store_values{fieldname, thetypebyte, field_val}
-		doc_map[field_num] = doc_data
-
-		//fmt.Println("end of loop, p:", p, "len of doc_map:", len(doc_map))
 	}
 
 	return arr_val
