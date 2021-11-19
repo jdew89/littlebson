@@ -71,7 +71,7 @@ func findOne(collection_name string, search_arr []SearchDocument) (interface{}, 
 			break
 		}
 
-		doc_val := reflect.ValueOf(doc).Elem()
+		doc_val := reflect.ValueOf(doc)
 
 		fmt.Println(doc_val.Interface())
 		//fmt.Println("doc_val: ", doc_val.FieldByName(field_name))

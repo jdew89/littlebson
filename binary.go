@@ -73,7 +73,7 @@ func buildBytesByType(name string, value reflect.Value) []byte {
 		bit_32_list := [5]string{"386", "arm", "mipsle", "mips", "wasm"}
 		is_32_bit := false
 		for i := range bit_32_list {
-			fmt.Println(runtime.GOARCH, " == ", bit_32_list[i], " ", runtime.GOARCH == bit_32_list[i])
+			//fmt.Println(runtime.GOARCH, " == ", bit_32_list[i], " ", runtime.GOARCH == bit_32_list[i])
 			if runtime.GOARCH == bit_32_list[i] {
 				data = append(data, INT32_TYPE) //type of field
 				data = append(data, fieldNameBytes(name)...)
