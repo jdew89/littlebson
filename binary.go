@@ -171,7 +171,7 @@ func readFieldName(doc_bytes []byte, p int32) (string, int32) {
 	fieldname := string(doc_bytes[p:k])
 
 	//move pointer past null
-	namesize := k + 1
+	namesize := k - p + 1
 
 	return fieldname, namesize
 }
@@ -233,13 +233,9 @@ func readStringValue(doc_bytes []byte, p int32) (*string, int32) {
 	str_len := bytesToInt32(doc_bytes[p : p+4])
 	p = p + 4
 
-	//fmt.Println("str len:", str_len)
-
 	field_string := string(doc_bytes[p : p+str_len-1]) //-1 for the null byte at the end
-	p = p + str_len
-	//fmt.Println("field str:", field_string, " p: ", *p)
 
-	return &field_string, str_len
+	return &field_string, str_len + 4
 }
 
 func readBinaryDataValue(doc_bytes []byte, p int32) (*[]byte, int32) {
@@ -257,7 +253,7 @@ func readBinaryDataValue(doc_bytes []byte, p int32) (*[]byte, int32) {
 
 	byte_array := doc_bytes[p : p+bytes_len]
 
-	return &byte_array, bytes_len
+	return &byte_array, bytes_len + 5 // +4 for size and +1 for subtype
 
 }
 

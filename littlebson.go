@@ -160,7 +160,7 @@ func readOneDocument(reader *bufio.Reader) (interface{}, error) {
 
 	for p < docLen {
 		thetypebyte := docBytes[p]
-		//fmt.Println("byte type:", thetypebyte, " p: ", p, " fieldnum:", field_num)
+		fmt.Println("byte type:", thetypebyte, " p: ", p, " fieldnum:", field_num)
 		//fmt.Println("type:", BSONType(thetypebyte))
 		//if the type byte is 0x00, move the pointer to the end of document and terminate loop. This is the end of the document.
 		if thetypebyte == 0x00 {
@@ -168,14 +168,18 @@ func readOneDocument(reader *bufio.Reader) (interface{}, error) {
 			//fmt.Println("found null byte, p:", p)
 			break
 		}
+
 		p += 1
 		field_num += 1
+		fmt.Println(p)
 
 		fieldname, name_size := readFieldName(docBytes[:], p)
 		p += name_size
+		fmt.Println(p)
 
 		field_val, field_size := readFieldValue(thetypebyte, docBytes[:], p)
 		p += field_size
+		fmt.Println(p)
 
 		doc_data := store_values{fieldname, thetypebyte, field_val}
 		doc_map[field_num] = doc_data
@@ -219,8 +223,7 @@ func setDocumentFieldValue(document *reflect.Value, field_value interface{}, typ
 	case NULL_TYPE: //null
 		//document.Field(field_num)
 	case INT32_TYPE:
-		//TODO this is casting to an int64 but is supposed to be an int32
-		document.Field(field_num).SetInt(field_value.(int64))
+		document.Field(field_num).SetInt(reflect.ValueOf(field_value).Int())
 	case UINT64_TYPE: //timestamp
 		document.Field(field_num).SetUint(field_value.(uint64))
 	case INT64_TYPE:
