@@ -79,19 +79,22 @@ func findOne(collection_name string, search_arr []SearchDocument) (interface{}, 
 		//fmt.Println("interfaces eq: ", doc_val.FieldByName(field_name).Interface() == reflect.ValueOf(field_val).Interface())
 		//fmt.Println("string vals eq: ",doc_val.FieldByName(field_name).String() == reflect.ValueOf(field_val).String())
 
-		found = doc_val.FieldByName(search_arr[0].Name).Interface() == reflect.ValueOf(search_arr[0].Value).Interface()
-		//check the rest of the query params if found first
-		if found {
-			fmt.Println("found first")
-			for _, obj := range search_arr {
-				found = doc_val.FieldByName(obj.Name).Interface() == reflect.ValueOf(obj.Value).Interface()
+		//if the field does not exist, ignore it
+		if doc_val.FieldByName(search_arr[0].Name).IsValid() {
+			found = doc_val.FieldByName(search_arr[0].Name).Interface() == reflect.ValueOf(search_arr[0].Value).Interface()
+			//check the rest of the query params if found first
+			if found {
+				fmt.Println("found first")
+				for _, obj := range search_arr {
+					found = doc_val.FieldByName(obj.Name).Interface() == reflect.ValueOf(obj.Value).Interface()
 
-				//fmt.Println("doc_type", doc_val.FieldByName(obj.Name).Type())
-				//fmt.Println("find_type", reflect.ValueOf(obj.Value).Type())
+					//fmt.Println("doc_type", doc_val.FieldByName(obj.Name).Type())
+					//fmt.Println("find_type", reflect.ValueOf(obj.Value).Type())
 
-				//if one doesn't match, break
-				if !found {
-					break
+					//if one doesn't match, break
+					if !found {
+						break
+					}
 				}
 			}
 		}
