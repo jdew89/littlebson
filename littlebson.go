@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"reflect"
+	"time"
 )
 
 func check(e error) {
@@ -72,10 +73,36 @@ func null() interface{} {
 }
 
 func main() {
-	mybytes := make([]byte, 2)
-	mybytes[0] = 0x68
-	mybytes[1] = 0x69
 
+	/*
+		my id
+		64 bit integer
+		[41 bits of time][10 bit machine id][12 bit rand num]
+		[time] with custom epoch of 1 jan 2021, 00:00:00
+	*/
+
+	//id := time.Now().UnixNano()
+	test := int64(0x000001ffffffffff)
+	//mytime := time.UnixMilli(time.Now().UnixMilli() & test)
+	mytime := time.UnixMilli(0x000001ffffffffff & test)
+
+	myepoch := time.Date(2021, time.January, 1, 0, 0, 0, 0, time.Local)
+
+	now := time.Now()
+
+	fmt.Println("time:", now.UnixMilli())
+	fmt.Println("time:", now)
+	fmt.Println("myepoch:", myepoch.UnixMilli())
+	fmt.Println("myepoch:", myepoch)
+	fmt.Println("mytime:", mytime.UnixMilli())
+	fmt.Println("mytime:", mytime.String())
+	fmt.Println()
+
+	//runTest()
+
+}
+
+func runTest() {
 	myarr := make([]interface{}, 7)
 	myarr[0] = "IT WORKS"
 	myarr[1] = 1234
