@@ -96,7 +96,12 @@ func buildBytesByType(name string, value reflect.Value) []byte {
 		data = append(data, INT32_TYPE) //type of field
 		data = append(data, fieldNameBytes(name)...)
 		data = append(data, int32ToBytes(int32(value.Int()))...)
-	case reflect.Uint64: //timestamp
+	case reflect.Uint64:
+		if value.Type() == reflect.TypeOf(LilBsonID(0)) {
+			data = append(data, ID_TYPE) //type of field
+			data = append(data, fieldNameBytes(name)...)
+			data = append(data, uint64ToBytes(uint64(value.Uint()))...)
+		}
 		data = append(data, UINT64_TYPE) //type of field
 		data = append(data, fieldNameBytes(name)...)
 		data = append(data, uint64ToBytes(uint64(value.Uint()))...)
