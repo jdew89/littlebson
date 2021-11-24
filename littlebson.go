@@ -35,6 +35,8 @@ const (
 	INT64_TYPE          = 0x12
 )
 
+type LilBsonID uint64
+
 type Athing struct {
 	TestStr string
 	Num64   int64
@@ -80,9 +82,9 @@ func null() interface{} {
 
 func main() {
 
-	genLilBsonId()
+	//genLilBsonId()
 
-	//runTest()
+	runTest()
 
 }
 
@@ -92,8 +94,7 @@ func main() {
 	[10 bit machine id][41 bits of time][13 bit rand num]
 	[time] with custom epoch of 1 jan 2021, 00:00:00
 */
-func genLilBsonId() uint64 {
-	var new_id uint64 = 0
+func genLilBsonID() LilBsonID {
 
 	time_bits := getTimeBits()
 	fmt.Println("time bits: ", strconv.FormatUint(time_bits, 2))
@@ -102,12 +103,15 @@ func genLilBsonId() uint64 {
 	rand_bits := genRandBits()
 	fmt.Println("rand bits: ", strconv.FormatUint(rand_bits, 2))
 
+	var new_id uint64 = 0
 	new_id = machine_bits << 54
 	new_id += time_bits << 13
 	new_id += rand_bits
 	fmt.Println("id bits: ", strconv.FormatUint(new_id, 2))
 	fmt.Println("id hex: ", strconv.FormatUint(new_id, 16))
-	return new_id
+
+	bson_id := LilBsonID(new_id)
+	return bson_id
 }
 
 func getTimeBits() uint64 {
@@ -165,7 +169,7 @@ func runTest() {
 	afloat := myfloat(5.5)
 	myarr := make([]interface{}, 7)
 	myarr[0] = "IT WORKS"
-	myarr[1] = 1234
+	myarr[1] = genLilBsonID()
 	myarr[2] = int32(4321)
 	myarr[3] = afloat
 	myarr[4] = true
@@ -363,6 +367,8 @@ func setDocumentFieldValue(document *reflect.Value, field_value interface{}, typ
 		document.Field(field_num).Set(reflect.ValueOf(field_value))
 	case BINARY_TYPE:
 		document.Field(field_num).SetBytes(field_value.([]byte))
+	case ID_TYPE:
+		document.Field(field_num).SetUint(field_value.(uint64))
 	case BOOL_TYPE:
 		document.Field(field_num).SetBool(field_value.(bool))
 	case NULL_TYPE: //null
@@ -395,6 +401,9 @@ func readFieldValue(typebyte byte, doc_bytes []byte, p int32) (interface{}, int3
 	case BINARY_TYPE:
 		fieldvalue, binary_size := readBinaryDataValue(doc_bytes[:], p)
 		return *fieldvalue, binary_size
+	case ID_TYPE:
+		fieldvalue := LilBsonID(readUint64Value(doc_bytes[:], p))
+		return fieldvalue, 8
 	case BOOL_TYPE:
 		fieldvalue := readBoolValue(doc_bytes[:], p)
 		return fieldvalue, 1
@@ -443,6 +452,8 @@ func BSONType(b byte) reflect.Type {
 		return reflect.TypeOf(make([]interface{}, 0))
 	case BINARY_TYPE:
 		return reflect.TypeOf(make([]byte, 0))
+	case ID_TYPE:
+		return reflect.TypeOf(LilBsonID(0))
 	case BOOL_TYPE:
 		return reflect.TypeOf(true)
 	case NULL_TYPE:
