@@ -101,10 +101,11 @@ func buildBytesByType(name string, value reflect.Value) []byte {
 			data = append(data, ID_TYPE) //type of field
 			data = append(data, fieldNameBytes(name)...)
 			data = append(data, uint64ToBytes(uint64(value.Uint()))...)
+		} else {
+			data = append(data, UINT64_TYPE) //type of field
+			data = append(data, fieldNameBytes(name)...)
+			data = append(data, uint64ToBytes(uint64(value.Uint()))...)
 		}
-		data = append(data, UINT64_TYPE) //type of field
-		data = append(data, fieldNameBytes(name)...)
-		data = append(data, uint64ToBytes(uint64(value.Uint()))...)
 	case reflect.Uint: //always 64-bit
 		data = append(data, UINT64_TYPE) //type of field
 		data = append(data, fieldNameBytes(name)...)
