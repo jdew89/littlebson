@@ -2,11 +2,16 @@ package main
 
 import (
 	"bufio"
+	"encoding/hex"
 	"fmt"
 	"io"
+	"math/rand"
 	"os"
 	"reflect"
+	"strconv"
 	"time"
+
+	"github.com/denisbrodbeck/machineid"
 )
 
 func check(e error) {
@@ -22,6 +27,7 @@ const (
 	DOCUMENT_TYPE       = 0x03
 	ARRAY_TYPE          = 0x04
 	BINARY_TYPE         = 0x05
+	ID_TYPE             = 0x07
 	BOOL_TYPE           = 0x08
 	NULL_TYPE           = 0x0A
 	INT32_TYPE          = 0x10
@@ -74,40 +80,94 @@ func null() interface{} {
 
 func main() {
 
-	/*
-		my id
-		64 bit integer
-		[41 bits of time][10 bit machine id][12 bit rand num]
-		[time] with custom epoch of 1 jan 2021, 00:00:00
-	*/
-
-	//id := time.Now().UnixNano()
-	test := int64(0x000001ffffffffff)
-	//mytime := time.UnixMilli(time.Now().UnixMilli() & test)
-	mytime := time.UnixMilli(0x000001ffffffffff & test)
-
-	myepoch := time.Date(2021, time.January, 1, 0, 0, 0, 0, time.Local)
-
-	now := time.Now()
-
-	fmt.Println("time:", now.UnixMilli())
-	fmt.Println("time:", now)
-	fmt.Println("myepoch:", myepoch.UnixMilli())
-	fmt.Println("myepoch:", myepoch)
-	fmt.Println("mytime:", mytime.UnixMilli())
-	fmt.Println("mytime:", mytime.String())
-	fmt.Println()
+	genLilBsonId()
 
 	//runTest()
 
 }
 
+/*
+	my id
+	64 bit uint
+	[10 bit machine id][41 bits of time][13 bit rand num]
+	[time] with custom epoch of 1 jan 2021, 00:00:00
+*/
+func genLilBsonId() uint64 {
+	var new_id uint64 = 0
+
+	time_bits := getTimeBits()
+	fmt.Println("time bits: ", strconv.FormatUint(time_bits, 2))
+	machine_bits := getMachineIdBits()
+	fmt.Println("machine bits: ", strconv.FormatUint(machine_bits, 2))
+	rand_bits := genRandBits()
+	fmt.Println("rand bits: ", strconv.FormatUint(rand_bits, 2))
+
+	new_id = machine_bits << 54
+	new_id += time_bits << 13
+	new_id += rand_bits
+	fmt.Println("id bits: ", strconv.FormatUint(new_id, 2))
+	fmt.Println("id hex: ", strconv.FormatUint(new_id, 16))
+	return new_id
+}
+
+func getTimeBits() uint64 {
+	var time_bits int64
+	keep_bits := int64(0x000001ffffffffff) //keep 41 bits of mili time
+
+	newepoch := time.Date(2021, time.January, 1, 0, 0, 0, 0, time.UTC)
+	utcepoch := time.Date(1970, time.January, 1, 0, 0, 0, 0, time.UTC)
+
+	mytime := time.Now()
+	dif := utcepoch.Sub(newepoch)
+	mytime = mytime.Add(dif)
+
+	time_bits = mytime.UnixMilli() & keep_bits
+
+	return uint64(time_bits)
+}
+
+//10 bits from hashed ID
+//uses 5 bits from the front, and 5 from the back
+func getMachineIdBits() uint64 {
+	var id_bits uint64 = 0
+
+	machine_str, err := machineid.ProtectedID("littlebson")
+	if err != nil {
+		panic("Cannot determine machine ID!")
+	}
+	machineid_bytes, err := hex.DecodeString(machine_str)
+	if err != nil {
+		panic("Cannot convert machine ID to hex!")
+	}
+
+	bytes := [2]byte{0, 0}
+	bytes[0] = machineid_bytes[0] & 0b11111000                      //keep first 5 bits, zero rest
+	bytes[1] = machineid_bytes[len(machineid_bytes)-1] & 0b00011111 //keep last 5 bits, zero rest
+
+	id_bits = uint64(bytes[0]) << 2
+	id_bits = id_bits + uint64(bytes[1])
+
+	return id_bits
+}
+
+func genRandBits() uint64 {
+	var bits uint64 = 0
+
+	rand_source := rand.NewSource(time.Now().UnixNano())
+	time_rand := rand.New(rand_source)
+	bits = time_rand.Uint64() & 0x0000000000001fff //keep 13 bits
+
+	return bits
+}
+
 func runTest() {
+	type myfloat float64
+	afloat := myfloat(5.5)
 	myarr := make([]interface{}, 7)
 	myarr[0] = "IT WORKS"
 	myarr[1] = 1234
 	myarr[2] = int32(4321)
-	myarr[3] = float64(5.5)
+	myarr[3] = afloat
 	myarr[4] = true
 	myarr[5] = []int64{9, 8, 7}
 	myarr[6] = Small{"small struct", int32(32), true}
