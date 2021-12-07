@@ -3,8 +3,10 @@ package main
 import (
 	"bufio"
 	"encoding/hex"
+	"encoding/xml"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"math/rand"
 	"os"
 	"reflect"
@@ -38,6 +40,7 @@ const (
 type LilBsonID uint64
 
 type Athing struct {
+	Id      LilBsonID
 	TestStr string
 	Num64   int64
 	Num32   int32
@@ -86,6 +89,61 @@ func main() {
 
 	runTest()
 
+}
+
+func runTest() {
+	type myfloat float64
+	afloat := myfloat(5.5)
+	myarr := make([]interface{}, 7)
+	myarr[0] = genLilBsonID()
+	myarr[1] = "IT WORKS"
+	myarr[2] = int32(4321)
+	myarr[3] = afloat
+	myarr[4] = true
+	myarr[5] = []int64{9, 8, 7}
+	myarr[6] = Small{"small struct", int32(32), true}
+
+	//return
+	mystrarr := make([]string, 2)
+	mystrarr[0] = "hello"
+	mystrarr[1] = "world"
+
+	type tester struct {
+		Array []interface{}
+	}
+
+	something := Athing{genLilBsonID(), "Duuude", -100, int32(100), 32134, true, mystrarr, 12.34}
+	//something := tester{myarr[:]}
+	//something := Small{"small struct", int32(32), true}
+	//something := Blarg{"Duuude", -100, 100, 1234, false, 56.91, mybytes[:], myarr[:], Blarg{"Duuude", -100, 100, 1234, false, 56.91, mybytes[:], myarr[:], Small{}}}
+	//insertOne("data", myarr[:])
+	insertOne("data", something)
+	file, _ := xml.MarshalIndent(something, "", " ")
+	_ = ioutil.WriteFile("notes1.xml", file, 0644)
+
+	//var something Blarg
+
+	for i := 0; i < 1000; i++ {
+		//something = Blarg{"Duuude" + fmt.Sprint(i), int64(i), 100 + int32(i), 1000 + uint64(i), false, 56.91 + float64(i)}
+		//insertOne("data", something)
+	}
+
+	//fmt.Printf("%+v\n", something)
+
+	query := make([]SearchDocument, 3)
+	query[0] = SearchDocument{"TestStr", "Duuude6"}
+	query[1] = SearchDocument{"Num64", 6}
+	query[2] = SearchDocument{"Num32", int32(106)}
+	query[0] = SearchDocument{"TestStr", "Duuude"}
+	query[1] = SearchDocument{"Num64", -100}
+	query[2] = SearchDocument{"Num32", int32(100)}
+	doc, err := findOne("data", query)
+	if err == nil {
+		val := reflect.ValueOf(doc)
+		fmt.Println(val.Interface())
+	} else {
+		fmt.Println("Not found.")
+	}
 }
 
 /*
@@ -162,59 +220,6 @@ func genRandBits() uint64 {
 	bits = time_rand.Uint64() & 0x0000000000001fff //keep 13 bits
 
 	return bits
-}
-
-func runTest() {
-	type myfloat float64
-	afloat := myfloat(5.5)
-	myarr := make([]interface{}, 7)
-	myarr[0] = "IT WORKS"
-	myarr[1] = genLilBsonID()
-	myarr[2] = int32(4321)
-	myarr[3] = afloat
-	myarr[4] = true
-	myarr[5] = []int64{9, 8, 7}
-	myarr[6] = Small{"small struct", int32(32), true}
-
-	//return
-	mystrarr := make([]string, 2)
-	mystrarr[0] = "hello"
-	mystrarr[1] = "world"
-
-	type tester struct {
-		Array []interface{}
-	}
-
-	//something := Athing{"Duuude", -100, int32(100), 32134, true, mystrarr, 12.34}
-	something := tester{myarr[:]}
-	//something := Small{"small struct", int32(32), true}
-	//something := Blarg{"Duuude", -100, 100, 1234, false, 56.91, mybytes[:], myarr[:], Blarg{"Duuude", -100, 100, 1234, false, 56.91, mybytes[:], myarr[:], Small{}}}
-	//insertOne("data", myarr[:])
-	insertOne("data", something)
-
-	//var something Blarg
-
-	for i := 0; i < 1000; i++ {
-		//something = Blarg{"Duuude" + fmt.Sprint(i), int64(i), 100 + int32(i), 1000 + uint64(i), false, 56.91 + float64(i)}
-		//insertOne("data", something)
-	}
-
-	//fmt.Printf("%+v\n", something)
-
-	query := make([]SearchDocument, 3)
-	query[0] = SearchDocument{"TestStr", "Duuude6"}
-	query[1] = SearchDocument{"Num64", 6}
-	query[2] = SearchDocument{"Num32", int32(106)}
-	query[0] = SearchDocument{"TestStr", "Duuude"}
-	query[1] = SearchDocument{"Num64", -100}
-	query[2] = SearchDocument{"Num32", int32(100)}
-	doc, err := findOne("data", query)
-	if err == nil {
-		val := reflect.ValueOf(doc).Elem()
-		fmt.Println(val.Interface())
-	} else {
-		fmt.Println("Not found.")
-	}
 }
 
 //pass a slice to this function for fastest speed
@@ -368,7 +373,7 @@ func setDocumentFieldValue(document *reflect.Value, field_value interface{}, typ
 	case BINARY_TYPE:
 		document.Field(field_num).SetBytes(field_value.([]byte))
 	case ID_TYPE:
-		document.Field(field_num).SetUint(field_value.(uint64))
+		document.Field(field_num).Set(reflect.ValueOf(field_value))
 	case BOOL_TYPE:
 		document.Field(field_num).SetBool(field_value.(bool))
 	case NULL_TYPE: //null
