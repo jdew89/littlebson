@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"math"
 	"reflect"
 	"runtime"
@@ -18,10 +17,10 @@ func buildDocumentBytes(doc interface{}) []byte {
 	docTypes := docInterface.Type() //used to get field names
 	var data []byte
 
-	fmt.Println("in build docbytes")
-	fmt.Println("type: ", docTypes)
-	fmt.Println("kind: ", docInterface.Kind())
-	fmt.Println("value: ", docInterface)
+	//fmt.Println("in build docbytes")
+	//fmt.Println("type: ", docTypes)
+	//fmt.Println("kind: ", docInterface.Kind())
+	//fmt.Println("value: ", docInterface)
 	if docInterface.Kind() == reflect.Slice || docInterface.Kind() == reflect.Array {
 		//if an interface array, cast it to interface array or all elements will be inferaces and the "else" section doesn't work
 		//because they are type interface and not an actual type
@@ -43,7 +42,7 @@ func buildDocumentBytes(doc interface{}) []byte {
 	//TODO need to add support for a map - treat it like a struct?
 
 	if docInterface.Kind() == reflect.Struct {
-		fmt.Println("It's a struct")
+		//fmt.Println("It's a struct")
 		//loops through fields of the struct
 		for i := 0; i < docInterface.NumField(); i++ {
 			//field := docInterface.Field(i)

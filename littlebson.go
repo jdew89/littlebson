@@ -10,7 +10,6 @@ import (
 	"math/rand"
 	"os"
 	"reflect"
-	"strconv"
 	"time"
 
 	"github.com/denisbrodbeck/machineid"
@@ -117,17 +116,65 @@ func runTest() {
 	//something := Small{"small struct", int32(32), true}
 	//something := Blarg{"Duuude", -100, 100, 1234, false, 56.91, mybytes[:], myarr[:], Blarg{"Duuude", -100, 100, 1234, false, 56.91, mybytes[:], myarr[:], Small{}}}
 	//insertOne("data", myarr[:])
-	insertOne("data", something)
-	file, _ := xml.MarshalIndent(something, "", " ")
+
+	fmt.Println("building xml")
+	start := time.Now()
+
+	//building xml
+	xmltestarr := make([]Athing, 10000)
+	for i := 0; i < len(xmltestarr); i++ {
+		something = Athing{genLilBsonID(), "Duuude" + fmt.Sprint(i), int64(i), int32(100) + int32(i), 1000 + uint64(i), false, mystrarr, 56.91 + float64(i)}
+		xmltestarr[i] = something
+	}
+	file, _ := xml.MarshalIndent(xmltestarr, "", " ")
 	_ = ioutil.WriteFile("notes1.xml", file, 0644)
 
-	//var something Blarg
+	duration := time.Since(start)
+	xmltime := duration
+	fmt.Println("xml  time:", duration.Milliseconds())
 
-	for i := 0; i < 1000; i++ {
-		//something = Blarg{"Duuude" + fmt.Sprint(i), int64(i), 100 + int32(i), 1000 + uint64(i), false, 56.91 + float64(i)}
-		//insertOne("data", something)
+	//insertOne("data", something)
+	//var something Blarg
+	fmt.Println("building lbson")
+	start = time.Now()
+	//for i := 0; i < 1000; i++ {
+	//something = Athing{genLilBsonID(), "Duuude" + fmt.Sprint(i), int64(i), int32(100) + int32(i), 1000 + uint64(i), false, mystrarr, 56.91 + float64(i)}
+	//something = Blarg{"Duuude" + fmt.Sprint(i), int64(i), 100 + int32(i), 1000 + uint64(i), false, 56.91 + float64(i)}
+	//insertOne("data", something)
+	//}
+	xmltestarr = make([]Athing, 10000)
+	for i := 0; i < len(xmltestarr); i++ {
+		something = Athing{genLilBsonID(), "Duuude" + fmt.Sprint(i), int64(i), int32(100) + int32(i), 1000 + uint64(i), false, mystrarr, 56.91 + float64(i)}
+		xmltestarr[i] = something
 	}
 
+	type testathing struct {
+		Athingarray []Athing
+	}
+
+	//TODO: the time diff between inserting 1 at a time and as a single struct is HUGE
+	//this might be because it opens and closes the stream each time?
+
+	insertOne("data", testathing{xmltestarr[:]})
+	duration = time.Since(start)
+	fmt.Println("bson time:", duration.Milliseconds())
+	fmt.Println("xml - bson:", (xmltime - duration).Milliseconds())
+
+	fmt.Println("reading xml")
+	start = time.Now()
+	xmlFile, err := os.Open("notes1.xml")
+	defer xmlFile.Close()
+	xmlbytes, _ := ioutil.ReadAll(xmlFile)
+	type arr struct {
+		Things []Athing
+	}
+	var xmlarr arr
+	xml.Unmarshal(xmlbytes, &xmlarr)
+	duration = time.Since(start)
+	fmt.Println("xml read time:", duration.Milliseconds())
+	fmt.Println(xmlarr)
+
+	start = time.Now()
 	//fmt.Printf("%+v\n", something)
 
 	query := make([]SearchDocument, 3)
@@ -144,6 +191,8 @@ func runTest() {
 	} else {
 		fmt.Println("Not found.")
 	}
+	duration = time.Since(start)
+	fmt.Println("lbson read time:", duration.Milliseconds())
 }
 
 /*
@@ -155,18 +204,18 @@ func runTest() {
 func genLilBsonID() LilBsonID {
 
 	time_bits := getTimeBits()
-	fmt.Println("time bits: ", strconv.FormatUint(time_bits, 2))
+	//fmt.Println("time bits: ", strconv.FormatUint(time_bits, 2))
 	machine_bits := getMachineIdBits()
-	fmt.Println("machine bits: ", strconv.FormatUint(machine_bits, 2))
+	//fmt.Println("machine bits: ", strconv.FormatUint(machine_bits, 2))
 	rand_bits := genRandBits()
-	fmt.Println("rand bits: ", strconv.FormatUint(rand_bits, 2))
+	//fmt.Println("rand bits: ", strconv.FormatUint(rand_bits, 2))
 
 	var new_id uint64 = 0
 	new_id = machine_bits << 54
 	new_id += time_bits << 13
 	new_id += rand_bits
-	fmt.Println("id bits: ", strconv.FormatUint(new_id, 2))
-	fmt.Println("id hex: ", strconv.FormatUint(new_id, 16))
+	//fmt.Println("id bits: ", strconv.FormatUint(new_id, 2))
+	//fmt.Println("id hex: ", strconv.FormatUint(new_id, 16))
 
 	bson_id := LilBsonID(new_id)
 	return bson_id

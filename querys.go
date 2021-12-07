@@ -73,7 +73,7 @@ func findOne(collection_name string, search_arr []SearchDocument) (interface{}, 
 
 		doc_val := reflect.ValueOf(doc)
 
-		fmt.Println(doc_val.Interface())
+		//fmt.Println(doc_val.Interface())
 		//fmt.Println("doc_val: ", doc_val.FieldByName(field_name))
 		//fmt.Println("find_val: ", reflect.ValueOf(field_val))
 		//fmt.Println("interfaces eq: ", doc_val.FieldByName(field_name).Interface() == reflect.ValueOf(field_val).Interface())
