@@ -37,6 +37,30 @@ func insertOne(collection_name string, doc interface{}) error {
 	return err
 }
 
+//TODO need to convert []interface to just an interface
+//look at what I did in binary to figure out how to convert it to a array to iterate through
+func insertMany(collection_name string, docs []interface{}) error {
+	var all_doc_bytes []byte = make([]byte, 0)
+	for i := 0; i < len(docs); i++ {
+		doc := docs[i]
+		doc_bytes := buildDocumentBytes(doc)
+		all_doc_bytes = append(all_doc_bytes, doc_bytes...)
+	}
+
+	file, err := os.OpenFile(collection_name+".db", os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
+	if err != nil {
+		return err
+	}
+
+	check(err)
+	defer file.Close()
+
+	//fmt.Println(doc_bytes)
+	err = writeBSON(file, all_doc_bytes[:])
+
+	return err
+}
+
 //finds first document by searching the fieldname for given value
 //panics on bad collection name
 //returns document, or error if no matches found

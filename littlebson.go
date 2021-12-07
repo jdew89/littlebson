@@ -147,6 +147,7 @@ func runTest() {
 		something = Athing{genLilBsonID(), "Duuude" + fmt.Sprint(i), int64(i), int32(100) + int32(i), 1000 + uint64(i), false, mystrarr, 56.91 + float64(i)}
 		xmltestarr[i] = something
 	}
+	insertMany("data", xmltestarr)
 
 	type testathing struct {
 		Athingarray []Athing
