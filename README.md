@@ -95,6 +95,7 @@ subtype ::= "\x00"  Generic binary subtype
 ## Notes
 
 - Array - The document for an array is a normal BSON document with integer values for the keys, starting with 0 and continuing sequentially. For example, the array ['red', 'blue'] would be encoded as the document {'0': 'red', '1': 'blue'}. The keys must be in ascending numerical order.
+- Lil Bson ID - Is a 64 bit unsigned integer. The bits are determined as follows: [10 bit machine id][41 bits of time][13 bit rand num]. This differs from the objectId because I wanted this ID to be simple to use, read, compare, and generate.
 - UTC datetime - The int64 is UTC milliseconds since the Unix epoch.
 - Timestamp - Special internal type used by MongoDB replication and sharding. First 4 bytes are an increment, second 4 are a timestamp.
 - Min key - Special type which compares lower than all other possible BSON element values.
