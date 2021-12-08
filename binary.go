@@ -17,10 +17,6 @@ func buildDocumentBytes(doc interface{}) []byte {
 	docTypes := docInterface.Type() //used to get field names
 	var data []byte
 
-	//fmt.Println("in build docbytes")
-	//fmt.Println("type: ", docTypes)
-	//fmt.Println("kind: ", docInterface.Kind())
-	//fmt.Println("value: ", docInterface)
 	if docInterface.Kind() == reflect.Slice || docInterface.Kind() == reflect.Array {
 		//if an interface array, cast it to interface array or all elements will be inferaces and the "else" section doesn't work
 		//because they are type interface and not an actual type

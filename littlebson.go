@@ -3,10 +3,8 @@ package main
 import (
 	"bufio"
 	"encoding/hex"
-	"encoding/xml"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math/rand"
 	"os"
 	"reflect"
@@ -117,63 +115,25 @@ func runTest() {
 	//something := Blarg{"Duuude", -100, 100, 1234, false, 56.91, mybytes[:], myarr[:], Blarg{"Duuude", -100, 100, 1234, false, 56.91, mybytes[:], myarr[:], Small{}}}
 	//insertOne("data", myarr[:])
 
-	fmt.Println("building xml")
-	start := time.Now()
-
-	//building xml
-	xmltestarr := make([]Athing, 10000)
-	for i := 0; i < len(xmltestarr); i++ {
-		something = Athing{genLilBsonID(), "Duuude" + fmt.Sprint(i), int64(i), int32(100) + int32(i), 1000 + uint64(i), false, mystrarr, 56.91 + float64(i)}
-		xmltestarr[i] = something
-	}
-	file, _ := xml.MarshalIndent(xmltestarr, "", " ")
-	_ = ioutil.WriteFile("notes1.xml", file, 0644)
-
-	duration := time.Since(start)
-	xmltime := duration
-	fmt.Println("xml  time:", duration.Milliseconds())
-
 	//insertOne("data", something)
 	//var something Blarg
 	fmt.Println("building lbson")
-	start = time.Now()
+	start := time.Now()
 	//for i := 0; i < 1000; i++ {
 	//something = Athing{genLilBsonID(), "Duuude" + fmt.Sprint(i), int64(i), int32(100) + int32(i), 1000 + uint64(i), false, mystrarr, 56.91 + float64(i)}
 	//something = Blarg{"Duuude" + fmt.Sprint(i), int64(i), 100 + int32(i), 1000 + uint64(i), false, 56.91 + float64(i)}
 	//insertOne("data", something)
 	//}
-	xmltestarr = make([]Athing, 10000)
-	for i := 0; i < len(xmltestarr); i++ {
+	testarr := make([]Athing, 100000)
+	for i := 0; i < len(testarr); i++ {
 		something = Athing{genLilBsonID(), "Duuude" + fmt.Sprint(i), int64(i), int32(100) + int32(i), 1000 + uint64(i), false, mystrarr, 56.91 + float64(i)}
-		xmltestarr[i] = something
+		testarr[i] = something
 	}
-	insertMany("data", xmltestarr)
+	//fmt.Println(xmltestarr)
+	insertMany("data", testarr[:])
 
-	type testathing struct {
-		Athingarray []Athing
-	}
-
-	//TODO: the time diff between inserting 1 at a time and as a single struct is HUGE
-	//this might be because it opens and closes the stream each time?
-
-	insertOne("data", testathing{xmltestarr[:]})
-	duration = time.Since(start)
+	duration := time.Since(start)
 	fmt.Println("bson time:", duration.Milliseconds())
-	fmt.Println("xml - bson:", (xmltime - duration).Milliseconds())
-
-	fmt.Println("reading xml")
-	start = time.Now()
-	xmlFile, err := os.Open("notes1.xml")
-	defer xmlFile.Close()
-	xmlbytes, _ := ioutil.ReadAll(xmlFile)
-	type arr struct {
-		Things []Athing
-	}
-	var xmlarr arr
-	xml.Unmarshal(xmlbytes, &xmlarr)
-	duration = time.Since(start)
-	fmt.Println("xml read time:", duration.Milliseconds())
-	fmt.Println(xmlarr)
 
 	start = time.Now()
 	//fmt.Printf("%+v\n", something)

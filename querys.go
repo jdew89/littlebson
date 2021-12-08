@@ -37,14 +37,16 @@ func insertOne(collection_name string, doc interface{}) error {
 	return err
 }
 
-//TODO need to convert []interface to just an interface
-//look at what I did in binary to figure out how to convert it to a array to iterate through
-func insertMany(collection_name string, docs []interface{}) error {
+//inserts many documents. Must be given an array or it throws an error.
+func insertMany(collection_name string, doc_array interface{}) error {
+	array_interface := reflect.ValueOf(doc_array)
 	var all_doc_bytes []byte = make([]byte, 0)
-	for i := 0; i < len(docs); i++ {
-		doc := docs[i]
-		doc_bytes := buildDocumentBytes(doc)
-		all_doc_bytes = append(all_doc_bytes, doc_bytes...)
+
+	if array_interface.Kind() == reflect.Slice || array_interface.Kind() == reflect.Array {
+		for i := 0; i < array_interface.Len(); i++ {
+			doc := array_interface.Index(i).Interface()
+			all_doc_bytes = append(all_doc_bytes, buildDocumentBytes(doc)...)
+		}
 	}
 
 	file, err := os.OpenFile(collection_name+".db", os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
