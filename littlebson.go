@@ -66,8 +66,8 @@ type Blarg struct {
 }
 
 type SearchDocument struct {
-	Name  string
-	Value interface{}
+	FieldName  string
+	FieldValue interface{}
 }
 
 type NullValue interface {
@@ -119,36 +119,44 @@ func runTest() {
 	//var something Blarg
 	fmt.Println("building lbson")
 	start := time.Now()
-	//for i := 0; i < 1000; i++ {
-	//something = Athing{genLilBsonID(), "Duuude" + fmt.Sprint(i), int64(i), int32(100) + int32(i), 1000 + uint64(i), false, mystrarr, 56.91 + float64(i)}
-	//something = Blarg{"Duuude" + fmt.Sprint(i), int64(i), 100 + int32(i), 1000 + uint64(i), false, 56.91 + float64(i)}
-	//insertOne("data", something)
-	//}
-	testarr := make([]Athing, 100000)
+
+	testarr := make([]Athing, 20)
 	for i := 0; i < len(testarr); i++ {
-		something = Athing{genLilBsonID(), "Duuude" + fmt.Sprint(i), int64(i), int32(100) + int32(i), 1000 + uint64(i), false, mystrarr, 56.91 + float64(i)}
+		something = Athing{genLilBsonID(), "Duuude" + fmt.Sprint(2), int64(i), int32(100) + int32(i), 1000 + uint64(i), false, mystrarr, 56.91 + float64(i)}
 		testarr[i] = something
 	}
+
 	//fmt.Println(xmltestarr)
-	insertMany("data", testarr[:])
+	err := insertMany("data", testarr[:])
+	check(err)
 
 	duration := time.Since(start)
-	fmt.Println("bson time:", duration.Milliseconds())
+	fmt.Println("bson write time:", duration.Milliseconds())
 
 	start = time.Now()
 	//fmt.Printf("%+v\n", something)
 
-	query := make([]SearchDocument, 3)
-	query[0] = SearchDocument{"TestStr", "Duuude6"}
-	query[1] = SearchDocument{"Num64", 6}
-	query[2] = SearchDocument{"Num32", int32(106)}
-	query[0] = SearchDocument{"TestStr", "Duuude"}
-	query[1] = SearchDocument{"Num64", -100}
-	query[2] = SearchDocument{"Num32", int32(100)}
-	doc, err := findOne("data", query)
+	query := make([]SearchDocument, 1)
+	query[0] = SearchDocument{"TestStr", "(?i)DuUude"}
+	//query[1] = SearchDocument{"Num64", 6}
+	//query[2] = SearchDocument{"Num32", int32(106)}
+	//query[0] = SearchDocument{"TestStr", "Duuude"}
+	//query[1] = SearchDocument{"Num64", -100}
+	//query[2] = SearchDocument{"Num32", int32(100)}
+	//doc, err := findOne("data", query)
+	doc2, err := findOne("data", query)
 	if err == nil {
-		val := reflect.ValueOf(doc)
-		fmt.Println(val.Interface())
+		//val := reflect.ValueOf(doc[0])
+		fmt.Println("found one:", doc2)
+
+	} else {
+		fmt.Println("Not found.")
+	}
+	doc, err := findMany("data", query)
+	if err == nil && len(doc) > 0 {
+		//val := reflect.ValueOf(doc[0])
+		fmt.Println("found many:", len(doc))
+		fmt.Println(doc[5])
 	} else {
 		fmt.Println("Not found.")
 	}

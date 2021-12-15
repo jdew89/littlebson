@@ -18,3 +18,6 @@
 
 ## Delete Many
 
+## Count
+Works just like FindMany but only returns a count.
+
