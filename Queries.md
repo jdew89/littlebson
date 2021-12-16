@@ -1,8 +1,14 @@
 # Queries
 
 ## Find One
+Searching strings always uses Regex.
+Specification found here:
+https://github.com/google/re2/wiki/Syntax
 
 ## Find Many
+Searching strings always uses Regex.
+Specification found here:
+https://github.com/google/re2/wiki/Syntax
 
 ## Insert One
 
