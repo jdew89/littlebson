@@ -155,11 +155,14 @@ func runTest() {
 	doc, err := findMany("data", query)
 	if err == nil && len(doc) > 0 {
 		//val := reflect.ValueOf(doc[0])
-		fmt.Println("found many:", len(doc))
 		fmt.Println(doc[5])
 	} else {
 		fmt.Println("Not found.")
 	}
+
+	count, err := FindCount("data", query)
+	fmt.Println("found docs count:", count)
+
 	duration = time.Since(start)
 	fmt.Println("lbson read time:", duration.Milliseconds())
 }
