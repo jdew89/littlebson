@@ -110,9 +110,9 @@ func findOne(collection_name string, search_arr []SearchDocument) (interface{}, 
 
 		//if the field does not exist, ignore it
 		if doc_val.FieldByName(search_arr[0].FieldName).IsValid() {
-
+			//check all fields, must match all of them
 			for _, srch_obj := range search_arr {
-				// if the field is a string
+				// if the field is a string, use regex
 				if reflect.ValueOf(srch_obj.FieldValue).Kind() == reflect.String && doc_val.FieldByName(srch_obj.FieldName).Kind() == reflect.String {
 					found, err = regexp.MatchString(srch_obj.FieldValue.(string), doc_val.FieldByName(srch_obj.FieldName).Interface().(string))
 					if err != nil {
@@ -176,6 +176,7 @@ func findMany(collection_name string, search_arr []SearchDocument) ([]interface{
 
 			//check all fields, must match all of them
 			for _, srch_obj := range search_arr {
+				// if the field is a string, use regex
 				if reflect.ValueOf(srch_obj.FieldValue).Kind() == reflect.String && doc_val.FieldByName(srch_obj.FieldName).Kind() == reflect.String {
 					found, err = regexp.MatchString(srch_obj.FieldValue.(string), doc_val.FieldByName(srch_obj.FieldName).Interface().(string))
 					if err != nil {
@@ -242,6 +243,7 @@ func FindCount(collection_name string, search_arr []SearchDocument) (int64, erro
 
 			//check all fields, must match all of them
 			for _, srch_obj := range search_arr {
+				// if the field is a string, use regex
 				if reflect.ValueOf(srch_obj.FieldValue).Kind() == reflect.String && doc_val.FieldByName(srch_obj.FieldName).Kind() == reflect.String {
 					found, err = regexp.MatchString(srch_obj.FieldValue.(string), doc_val.FieldByName(srch_obj.FieldName).Interface().(string))
 					if err != nil {
@@ -265,4 +267,67 @@ func FindCount(collection_name string, search_arr []SearchDocument) (int64, erro
 	}
 
 	return count, err
+}
+
+func UpdateOne(collection_name string, search_arr []SearchDocument, update_document []SearchDocument) error {
+	reader, f := openCollection(collection_name)
+	defer f.Close()
+	var err error
+
+	fmt.Println("Finding...", search_arr)
+
+	for i, obj := range search_arr {
+		//this swtich converts ints to int64's
+		//this is because golang converts int's to the underlying architecture.
+		//If the architecture is 32, it will convert to int64 just fine.
+		switch obj.FieldValue.(type) {
+		case int:
+			val := int64(reflect.ValueOf(obj.FieldValue).Interface().(int))
+			search_arr[i].FieldValue = val
+		case uint:
+			val := uint64(reflect.ValueOf(obj.FieldValue).Interface().(uint))
+			search_arr[i].FieldValue = val
+		}
+	}
+
+	var doc interface{}
+	found := false
+	for !found {
+		doc, err = readOneDocument(reader)
+		if err != nil {
+			fmt.Println("err finding", err)
+			doc = nil
+			break
+		}
+
+		doc_val := reflect.ValueOf(doc)
+
+		//if the field does not exist, ignore it
+		if doc_val.FieldByName(search_arr[0].FieldName).IsValid() {
+			//check all fields, must match all of them
+			for _, srch_obj := range search_arr {
+				// if the field is a string, use regex
+				if reflect.ValueOf(srch_obj.FieldValue).Kind() == reflect.String && doc_val.FieldByName(srch_obj.FieldName).Kind() == reflect.String {
+					found, err = regexp.MatchString(srch_obj.FieldValue.(string), doc_val.FieldByName(srch_obj.FieldName).Interface().(string))
+					if err != nil {
+						return err
+					}
+				} else {
+					found = doc_val.FieldByName(srch_obj.FieldName).Interface() == srch_obj.FieldValue
+				}
+
+				//if one doesn't match, break
+				if !found {
+					break
+				}
+			}
+		}
+	}
+
+	//if found, update the document
+	if found {
+		reader.WriteTo()
+	}
+
+	return err
 }

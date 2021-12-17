@@ -137,13 +137,15 @@ func runTest() {
 	//fmt.Printf("%+v\n", something)
 
 	query := make([]SearchDocument, 1)
-	query[0] = SearchDocument{"TestStr", "(?i)DuUude"}
+	//query[0] = SearchDocument{"TestStr", "(?i)DuUude"}
+	query[0] = SearchDocument{"TestStr", "Duuude6"}
 	//query[1] = SearchDocument{"Num64", 6}
 	//query[2] = SearchDocument{"Num32", int32(106)}
 	//query[0] = SearchDocument{"TestStr", "Duuude"}
 	//query[1] = SearchDocument{"Num64", -100}
 	//query[2] = SearchDocument{"Num32", int32(100)}
 	//doc, err := findOne("data", query)
+
 	doc2, err := findOne("data", query)
 	if err == nil {
 		//val := reflect.ValueOf(doc[0])
@@ -252,7 +254,8 @@ func writeBSON(file *os.File, data []byte) error {
 }
 
 //reads 1 full document into memory and returns it as an interface
-func readOneDocument(reader *bufio.Reader) (interface{}, error) {
+//returns the doucment and pointer location in the file
+func readOneDocument(reader *bufio.Reader) (interface{}, int64, error) {
 	docLenBytes := make([]byte, 4)
 	docLenBytes, err := reader.Peek(4) //gets the first document length
 	docLen := bytesToInt32(docLenBytes[:])
@@ -266,7 +269,7 @@ func readOneDocument(reader *bufio.Reader) (interface{}, error) {
 	docBytes := make([]byte, docLen)
 	_, err = io.ReadFull(reader, docBytes)
 	if err != nil {
-		return nil, err
+		return nil, ,err
 	}
 
 	//start pointer past the document size
@@ -315,6 +318,7 @@ func readArrayValue(doc_bytes []byte, p int32) ([]interface{}, int32) {
 	return arr_val, arr_len
 }
 
+//reads a full document and returns the interface of that document and byte size
 func readDocumentValue(main_doc_bytes []byte, p int32) (interface{}, int32) {
 	//var doc_val interface{}
 
