@@ -4,11 +4,13 @@
 Searching strings always uses Regex.
 Specification found here:
 https://github.com/google/re2/wiki/Syntax
+https://pkg.go.dev/regexp/syntax#hdr-Syntax
 
 ## Find Many
 Searching strings always uses Regex.
 Specification found here:
 https://github.com/google/re2/wiki/Syntax
+https://pkg.go.dev/regexp/syntax#hdr-Syntax
 
 ## Insert One
 
