@@ -99,7 +99,7 @@ func findOne(collection_name string, search_arr []SearchDocument) (interface{}, 
 	var doc interface{}
 	found := false
 	for !found {
-		doc, err = readOneDocument(reader)
+		doc, _, err = readOneDocument(reader, 0)
 		if err != nil {
 			fmt.Println("err finding", err)
 			doc = nil
@@ -161,7 +161,7 @@ func findMany(collection_name string, search_arr []SearchDocument) ([]interface{
 	//found := false
 	// loops until it reaches EOF
 	for {
-		doc, err := readOneDocument(reader)
+		doc, _, err := readOneDocument(reader, 0)
 		if err != nil {
 			//fmt.Println("End of file.", err)
 			doc = nil
@@ -228,7 +228,7 @@ func FindCount(collection_name string, search_arr []SearchDocument) (int64, erro
 	}
 
 	for {
-		doc, err := readOneDocument(reader)
+		doc, _, err := readOneDocument(reader, 0)
 		if err != nil {
 			//fmt.Println("End of file.", err)
 			doc = nil
@@ -273,6 +273,7 @@ func UpdateOne(collection_name string, search_arr []SearchDocument, update_docum
 	reader, f := openCollection(collection_name)
 	defer f.Close()
 	var err error
+	var file_loc_pointer int64 = 0
 
 	fmt.Println("Finding...", search_arr)
 
@@ -293,7 +294,7 @@ func UpdateOne(collection_name string, search_arr []SearchDocument, update_docum
 	var doc interface{}
 	found := false
 	for !found {
-		doc, err = readOneDocument(reader)
+		doc, file_loc_pointer, err = readOneDocument(reader, file_loc_pointer)
 		if err != nil {
 			fmt.Println("err finding", err)
 			doc = nil
@@ -326,7 +327,9 @@ func UpdateOne(collection_name string, search_arr []SearchDocument, update_docum
 
 	//if found, update the document
 	if found {
-		reader.WriteTo()
+		//reader.WriteTo()
+		peeked_val, _ := reader.Peek(1)
+		fmt.Println("found for update - peek: ", peeked_val)
 	}
 
 	return err
