@@ -330,7 +330,45 @@ func UpdateOne(collection_name string, search_arr []SearchDocument, update_docum
 		//reader.WriteTo()
 		peeked_val, _ := reader.Peek(1)
 		fmt.Println("found for update - peek: ", peeked_val)
+
+		fmt.Println("doc: ", doc)
+		docReflectValue := reflect.ValueOf(doc)
+
+		//need to copy the struct to an editable struct because the interface that is passed to this func
+		//is showing as type interface when using a pointer but type struct without it.
+		fieldValueMap := make(map[string]interface{})
+		struct_fields := make([]reflect.StructField, docReflectValue.Type().NumField())
+
+		for i := 0; i < docReflectValue.Type().NumField(); i++ {
+			fieldValueMap[docReflectValue.Type().Field(i).Name] = docReflectValue.Field(i).Interface()
+
+			struct_fields[i] = reflect.StructField{
+				Name: docReflectValue.Type().Field(i).Name,
+				Type: reflect.TypeOf(docReflectValue.Field(i).Interface()),
+			}
+		}
+
+		base_document := reflect.StructOf(struct_fields[:])
+		//var document reflect.Value
+		updatedDocument := reflect.New(base_document).Elem()
+
+		//updatedDocument.FieldByName("TestStr").SetString("TEST")
+		for i := 0; i < docReflectValue.Type().NumField(); i++ {
+			updatedDocument.FieldByName(docReflectValue.Type().Field(i).Name).Set(docReflectValue.Field(i))
+		}
+
+		for i := 0; i < len(update_document); i++ {
+			updatedDocument.FieldByName(update_document[i].FieldName).Set(reflect.ValueOf(update_document[0].FieldValue))
+		}
+
+		fmt.Println("updated doc:", updatedDocument)
+
+		TODO 
+		I can just have readOneDocument return a reflect.value and then edit the fields. This would elim the need to copy to a new struct again.base_document
+		Will need to refactor the other funcs that use it.
 	}
+
 
 	return err
 }
+

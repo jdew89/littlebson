@@ -168,8 +168,10 @@ func runTest() {
 	duration = time.Since(start)
 	fmt.Println("lbson read time:", duration.Milliseconds())
 
+	updateDoc := make([]SearchDocument, 1)
+	updateDoc[0] = SearchDocument{"TestStr", "Duuude6updated"}
 	fmt.Println("callig updateOne")
-	err = UpdateOne("data", query, query)
+	err = UpdateOne("data", query[:], updateDoc[:])
 }
 
 /*
