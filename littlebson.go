@@ -120,7 +120,7 @@ func runTest() {
 	fmt.Println("building lbson")
 	start := time.Now()
 
-	testarr := make([]Athing, 20)
+	testarr := make([]Athing, 2)
 	for i := 0; i < len(testarr); i++ {
 		something = Athing{genLilBsonID(), "Duuude" + fmt.Sprint(i), int64(i), int32(100) + int32(i), 1000 + uint64(i), false, mystrarr, 56.91 + float64(i)}
 		testarr[i] = something
@@ -138,7 +138,7 @@ func runTest() {
 
 	query := make([]SearchDocument, 1)
 	//query[0] = SearchDocument{"TestStr", "(?i)DuUude"}
-	query[0] = SearchDocument{"TestStr", "Duuude6"}
+	query[0] = SearchDocument{"TestStr", "Duuude1"}
 	//query[1] = SearchDocument{"Num64", 6}
 	//query[2] = SearchDocument{"Num32", int32(106)}
 	//query[0] = SearchDocument{"TestStr", "Duuude"}
@@ -250,7 +250,7 @@ func genRandBits() uint64 {
 	return bits
 }
 
-//pass a slice to this function for fastest speed
+//pass a slice to this function
 func writeBSON(file *os.File, data []byte) error {
 	_, err := file.Write(data)
 
@@ -258,9 +258,55 @@ func writeBSON(file *os.File, data []byte) error {
 	return err
 }
 
+//writes to a temp file, then renames to main file
+func UpdateBSON(collectionName string, updatedDocLocation int64, updatedDocBytes []byte, reader *bufio.Reader, f *os.File) {
+	f.Seek(0, 0)
+	reader.Reset(f)
+	//reader.Discard(int(updatedDocLocation))
+	fmt.Println("updated doc loc:", updatedDocLocation)
+
+	file, err := os.CreateTemp("C:\\Users\\JD\\Documents\\golang", "lbson*")
+	check(err)
+
+	readBuffer := make([]byte, updatedDocLocation)
+	_, err = io.ReadFull(reader, readBuffer)
+	check(err)
+
+	file.Write(readBuffer)
+	file.Write(updatedDocBytes)
+
+	//skip over the old document
+	docLenBytes, err := reader.Peek(4)
+	check(err)
+	docLen := bytesToInt32(docLenBytes[:])
+	reader.Discard(int(docLen))
+
+	check(err)
+	for err == nil {
+		fmt.Println("peeking")
+		docLenBytes, err = reader.Peek(4)
+		if err == io.EOF {
+			break
+		}
+		check(err)
+		docLen = bytesToInt32(docLenBytes[:])
+
+		readBuffer = make([]byte, docLen)
+		_, err = io.ReadFull(reader, readBuffer)
+		check(err)
+
+		_, err = file.Write(readBuffer)
+		check(err)
+	}
+	//if EOF reading, then move the updated DB to the colletion loc
+	if err == io.EOF {
+		fmt.Println("hit EOF")
+	}
+}
+
 //reads 1 full document into memory and returns it as an interface
 //returns the doucment and pointer location in the file
-func readOneDocument(reader *bufio.Reader, p int64) (interface{}, int64, error) {
+func readOneDocument(reader *bufio.Reader, p int64) (reflect.Value, int64, error) {
 	docLenBytes := make([]byte, 4)
 	docLenBytes, err := reader.Peek(4) //gets the first document length
 	docLen := bytesToInt32(docLenBytes[:])
@@ -274,13 +320,14 @@ func readOneDocument(reader *bufio.Reader, p int64) (interface{}, int64, error) 
 	docBytes := make([]byte, docLen)
 	_, err = io.ReadFull(reader, docBytes)
 	if err != nil {
-		return nil, p, err
+		var empty interface{}
+		return reflect.ValueOf(empty), p, err
 	}
 
-	document, doc_size := readDocumentValue(docBytes[:], 0)
+	reflectDocument, doc_size := readDocumentValue(docBytes[:], 0)
 	p += int64(doc_size)
 
-	return document, p, nil
+	return reflectDocument, p, nil
 
 }
 
@@ -321,7 +368,7 @@ func readArrayValue(doc_bytes []byte, p int32) ([]interface{}, int32) {
 
 //reads a full document and returns the interface of that document and byte size
 //returns document, document length
-func readDocumentValue(main_doc_bytes []byte, p int32) (interface{}, int32) {
+func readDocumentValue(main_doc_bytes []byte, p int32) (reflect.Value, int32) {
 
 	doc_len := bytesToInt32(main_doc_bytes[p : p+4])
 	//fmt.Println("doc_len:", doc_len)
@@ -380,7 +427,7 @@ func readDocumentValue(main_doc_bytes []byte, p int32) (interface{}, int32) {
 		setDocumentFieldValue(&document, doc.FieldValue, doc.FieldTypeByte, key)
 	}
 
-	return document.Interface(), doc_len
+	return document, doc_len
 
 	//return doc_val, doc_len
 }
@@ -424,7 +471,8 @@ func readFieldValue(typebyte byte, doc_bytes []byte, p int32) (interface{}, int3
 		fieldvalue, string_size := readStringValue(doc_bytes[:], p)
 		return *fieldvalue, string_size
 	case DOCUMENT_TYPE:
-		fieldvalue, doc_size := readDocumentValue(doc_bytes[:], p)
+		fieldReflectValue, doc_size := readDocumentValue(doc_bytes[:], p)
+		fieldvalue := fieldReflectValue.Interface()
 		return fieldvalue, doc_size
 	case ARRAY_TYPE:
 		fieldvalue, arr_size := readArrayValue(doc_bytes[:], p)

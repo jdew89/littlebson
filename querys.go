@@ -15,26 +15,31 @@ func openCollection(collection_path string) (*bufio.Reader, *os.File) {
 	f, err := os.Open(collection_path + ".db")
 	check(err)
 
+	//TODO: This has a default buffer size of 4096. I need to test reading a doc bigger than that
 	reader := bufio.NewReader(f)
 
 	return reader, f
 }
 
-//TODO: could change this to accept a doc pointer rather than the object. Could save execution time.
+func OpenCollectionForWriting(collection_name string) (*os.File, error) {
+	file, err := os.OpenFile(collection_name+".db", os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
+	if err != nil {
+		return nil, err
+	}
+
+	return file, err
+}
+
 //inserts 1 document at the end of specified collection
 func insertOne(collection_name string, doc interface{}) error {
 	doc_type := reflect.ValueOf(doc)
 	if doc_type.Kind() != reflect.Struct {
-		return errors.New("Must pass a struct to insertOne.")
+		return errors.New("must pass a struct to insertOne")
 	}
 
 	doc_bytes := buildDocumentBytes(doc)
 
-	file, err := os.OpenFile(collection_name+".db", os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
-	if err != nil {
-		return err
-	}
-
+	file, err := OpenCollectionForWriting(collection_name)
 	check(err)
 	defer file.Close()
 
@@ -55,7 +60,7 @@ func insertMany(collection_name string, doc_array interface{}) error {
 			all_doc_bytes = append(all_doc_bytes, buildDocumentBytes(doc)...)
 		}
 	} else {
-		return errors.New("Must pass an array or slice to insertMany.")
+		return errors.New("must pass an array or slice to insertMany")
 	}
 
 	file, err := os.OpenFile(collection_name+".db", os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
@@ -96,17 +101,17 @@ func findOne(collection_name string, search_arr []SearchDocument) (interface{}, 
 		}
 	}
 
-	var doc interface{}
+	//var doc interface{}
+	var doc_val reflect.Value
 	found := false
 	for !found {
-		doc, _, err = readOneDocument(reader, 0)
+		doc_val, _, err = readOneDocument(reader, 0)
 		if err != nil {
 			fmt.Println("err finding", err)
-			doc = nil
-			break
+			return nil, err
 		}
 
-		doc_val := reflect.ValueOf(doc)
+		//doc_val := reflect.ValueOf(doc)
 
 		//if the field does not exist, ignore it
 		if doc_val.FieldByName(search_arr[0].FieldName).IsValid() {
@@ -130,7 +135,7 @@ func findOne(collection_name string, search_arr []SearchDocument) (interface{}, 
 		}
 	}
 
-	return doc, err
+	return doc_val.Interface(), err
 }
 
 //finds all documents by searching the fieldname for given value
@@ -161,14 +166,11 @@ func findMany(collection_name string, search_arr []SearchDocument) ([]interface{
 	//found := false
 	// loops until it reaches EOF
 	for {
-		doc, _, err := readOneDocument(reader, 0)
+		doc_val, _, err := readOneDocument(reader, 0)
 		if err != nil {
 			//fmt.Println("End of file.", err)
-			doc = nil
-			break
+			return found_docs[:], err
 		}
-
-		doc_val := reflect.ValueOf(doc)
 
 		//if the field does not exist, ignore it
 		if doc_val.FieldByName(search_arr[0].FieldName).IsValid() {
@@ -193,7 +195,7 @@ func findMany(collection_name string, search_arr []SearchDocument) ([]interface{
 				}
 			}
 			if found {
-				found_docs = append(found_docs, doc)
+				found_docs = append(found_docs, doc_val.Interface())
 			}
 
 		}
@@ -228,14 +230,11 @@ func FindCount(collection_name string, search_arr []SearchDocument) (int64, erro
 	}
 
 	for {
-		doc, _, err := readOneDocument(reader, 0)
+		doc_val, _, err := readOneDocument(reader, 0)
 		if err != nil {
 			//fmt.Println("End of file.", err)
-			doc = nil
-			break
+			return count, err
 		}
-
-		doc_val := reflect.ValueOf(doc)
 
 		//if the field does not exist, ignore it
 		if doc_val.FieldByName(search_arr[0].FieldName).IsValid() {
@@ -291,17 +290,19 @@ func UpdateOne(collection_name string, search_arr []SearchDocument, update_docum
 		}
 	}
 
-	var doc interface{}
+	//var doc interface{}
+	var doc_val reflect.Value
+
 	found := false
 	for !found {
-		doc, file_loc_pointer, err = readOneDocument(reader, file_loc_pointer)
+		//use next_file loc_pointer so we can keep the current document loc for updating if it's found
+		doc_val, next_file_loc_pointer, err := readOneDocument(reader, file_loc_pointer)
 		if err != nil {
 			fmt.Println("err finding", err)
-			doc = nil
-			break
+			return err
 		}
 
-		doc_val := reflect.ValueOf(doc)
+		//doc_val := reflect.ValueOf(doc)
 
 		//if the field does not exist, ignore it
 		if doc_val.FieldByName(search_arr[0].FieldName).IsValid() {
@@ -323,52 +324,36 @@ func UpdateOne(collection_name string, search_arr []SearchDocument, update_docum
 				}
 			}
 		}
+		if !found {
+			//move pointer to next document if not found
+			file_loc_pointer = next_file_loc_pointer
+		}
+		fmt.Println("doc: ", doc_val)
 	}
+
+	IF YOU COMMENT OUT THE NEW FILE LOC POINTER STUFF IT WORKS AGAIN.
+	trying to work on getting the file loc poitner of the updated document. 
+	I realized it actually sends me the NEXT document location.
 
 	//if found, update the document
 	if found {
-		//reader.WriteTo()
-		peeked_val, _ := reader.Peek(1)
-		fmt.Println("found for update - peek: ", peeked_val)
 
-		fmt.Println("doc: ", doc)
-		docReflectValue := reflect.ValueOf(doc)
+		//peeked_val, _ := reader.Peek(1)
+		//fmt.Println("found for update - peek: ", peeked_val)
 
-		//need to copy the struct to an editable struct because the interface that is passed to this func
-		//is showing as type interface when using a pointer but type struct without it.
-		fieldValueMap := make(map[string]interface{})
-		struct_fields := make([]reflect.StructField, docReflectValue.Type().NumField())
-
-		for i := 0; i < docReflectValue.Type().NumField(); i++ {
-			fieldValueMap[docReflectValue.Type().Field(i).Name] = docReflectValue.Field(i).Interface()
-
-			struct_fields[i] = reflect.StructField{
-				Name: docReflectValue.Type().Field(i).Name,
-				Type: reflect.TypeOf(docReflectValue.Field(i).Interface()),
-			}
-		}
-
-		base_document := reflect.StructOf(struct_fields[:])
-		//var document reflect.Value
-		updatedDocument := reflect.New(base_document).Elem()
-
-		//updatedDocument.FieldByName("TestStr").SetString("TEST")
-		for i := 0; i < docReflectValue.Type().NumField(); i++ {
-			updatedDocument.FieldByName(docReflectValue.Type().Field(i).Name).Set(docReflectValue.Field(i))
-		}
+		fmt.Println("doc: ", doc_val)
+		fmt.Println("can set:", doc_val.CanSet())
 
 		for i := 0; i < len(update_document); i++ {
-			updatedDocument.FieldByName(update_document[i].FieldName).Set(reflect.ValueOf(update_document[0].FieldValue))
+			doc_val.FieldByName(update_document[i].FieldName).Set(reflect.ValueOf(update_document[0].FieldValue))
 		}
 
-		fmt.Println("updated doc:", updatedDocument)
+		fmt.Println("updated doc:", doc_val)
 
-		TODO 
-		I can just have readOneDocument return a reflect.value and then edit the fields. This would elim the need to copy to a new struct again.base_document
-		Will need to refactor the other funcs that use it.
+		updatedDocBytes := buildDocumentBytes(doc_val.Interface())
+
+		UpdateBSON(collection_name, file_loc_pointer, updatedDocBytes[:], reader, f)
 	}
-
 
 	return err
 }
-
