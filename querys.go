@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"reflect"
 	"regexp"
@@ -340,6 +341,107 @@ func UpdateOne(collection_name string, search_arr []SearchDocument, update_docum
 
 		err = UpdateBSON(collection_name, prev_doc_pointer, updatedDocBytes[:], reader, f)
 		check(err)
+	}
+
+	return err
+}
+
+func UpdateMany(collection_name string, search_arr []SearchDocument, update_document []SearchDocument) error {
+	reader, f := openCollection(collection_name)
+	defer f.Close()
+	var err error
+
+	fmt.Println("Finding...", search_arr)
+
+	for i, obj := range search_arr {
+		//this swtich converts ints to int64's
+		//this is because golang converts int's to the underlying architecture.
+		//If the architecture is 32, it will convert to int64 just fine.
+		switch obj.FieldValue.(type) {
+		case int:
+			val := int64(reflect.ValueOf(obj.FieldValue).Interface().(int))
+			search_arr[i].FieldValue = val
+		case uint:
+			val := uint64(reflect.ValueOf(obj.FieldValue).Interface().(uint))
+			search_arr[i].FieldValue = val
+		}
+	}
+
+	//var doc interface{}
+	//var doc_val reflect.Value
+	//var found_docs []reflect.Value
+	found_docs := make(map[int64]reflect.Value) //stores the file loc of doc and updated value
+
+	var curr_doc_pointer int64 = 0 //tracks current position in file
+	var prev_doc_pointer int64 = 0 //tracks previous doc loc
+
+	// loops until it reaches EOF
+	for {
+		doc_val, curr_doc_pointer, err := readOneDocument(reader, curr_doc_pointer)
+		something is wrong with these pointers again
+		fmt.Println("prev", prev_doc_pointer, " - curr", curr_doc_pointer)
+		fmt.Println(doc_val.Interface())
+		if err != nil {
+			if err == io.EOF { //only break if EOF
+				break
+			} else { //if some other error, return it
+				return err
+			}
+		}
+
+		//if the field does not exist, ignore it
+		//TODO THIS SHOULD PROBABLY BE IN THE LOOP
+		if doc_val.FieldByName(search_arr[0].FieldName).IsValid() {
+			found := false
+
+			//check all fields, must match all of them
+			for _, srch_obj := range search_arr {
+				// if the field is a string, use regex
+				if reflect.ValueOf(srch_obj.FieldValue).Kind() == reflect.String && doc_val.FieldByName(srch_obj.FieldName).Kind() == reflect.String {
+					found, err = regexp.MatchString(srch_obj.FieldValue.(string), doc_val.FieldByName(srch_obj.FieldName).Interface().(string))
+					if err != nil {
+						return err
+					}
+				} else {
+					//found = doc_val.FieldByName(search_arr[0].FieldName).Interface() == reflect.ValueOf(search_arr[0].FieldValue).Interface()
+					found = doc_val.FieldByName(srch_obj.FieldName).Interface() == srch_obj.FieldValue
+				}
+
+				//if one doesn't match, break
+				if !found {
+					break
+				}
+			}
+			if found {
+				found_docs[prev_doc_pointer] = doc_val
+			}
+		}
+		prev_doc_pointer = curr_doc_pointer
+	}
+
+	//if found, update the document
+	if len(found_docs) > 0 {
+		fmt.Println("before update:")
+		for k, elem := range found_docs {
+			fmt.Print(k, ":", elem.Interface())
+		}
+		for _, elem := range found_docs {
+			//update the fields
+			for i := 0; i < len(update_document); i++ {
+				elem.FieldByName(update_document[i].FieldName).Set(reflect.ValueOf(update_document[i].FieldValue))
+			}
+		}
+
+		fmt.Println("")
+		fmt.Println("after:")
+		for k, elem := range found_docs {
+			fmt.Print(k, ":", elem.Interface())
+		}
+
+		//updatedDocBytes := buildDocumentBytes(doc_val.Interface())
+
+		//err = UpdateBSON(collection_name, prev_doc_pointer, updatedDocBytes[:], reader, f)
+		//check(err)
 	}
 
 	return err

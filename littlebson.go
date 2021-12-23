@@ -138,7 +138,7 @@ func runTest() {
 
 	query := make([]SearchDocument, 1)
 	//query[0] = SearchDocument{"TestStr", "(?i)DuUude"}
-	query[0] = SearchDocument{"TestStr", "Duuude6"}
+	query[0] = SearchDocument{"TestStr", "Duuude[6,7]"}
 	//query[1] = SearchDocument{"Num64", 6}
 	//query[2] = SearchDocument{"Num32", int32(106)}
 	//query[0] = SearchDocument{"TestStr", "Duuude"}
@@ -172,7 +172,8 @@ func runTest() {
 	updateDoc[0] = SearchDocument{"TestStr", "Duuude6updated"}
 	updateDoc[1] = SearchDocument{"Num64", int64(66)}
 	fmt.Println("callig updateOne")
-	err = UpdateOne("data", query[:], updateDoc[:])
+	//err = UpdateOne("data", query[:], updateDoc[:])
+	err = UpdateMany("data", query[:], updateDoc[:])
 }
 
 /*
@@ -319,6 +320,68 @@ func UpdateBSON(collectionName string, updatedDocLocation int64, updatedDocBytes
 	}
 	return err
 }
+
+/*
+//writes to a temp file, then renames to main file
+func UpdateManyBSON(collectionName string, updatedDocuments, reader *bufio.Reader, f *os.File) error {
+	f.Seek(0, 0)
+	reader.Reset(f)
+
+	//tempFile, err := os.CreateTemp("C:\\Users\\JD\\Documents\\golang", "lbson*")
+	tempFile, err := os.CreateTemp("", "lbson*")
+	check(err)
+
+	readBuffer := make([]byte, updatedDocLocation)
+	_, err = io.ReadFull(reader, readBuffer)
+	check(err)
+
+	tempFile.Write(readBuffer)
+	tempFile.Write(updatedDocBytes)
+
+	//skip over the old document
+	docLenBytes, err := reader.Peek(4)
+	check(err)
+	docLen := bytesToInt32(docLenBytes[:])
+	_, err = reader.Discard(int(docLen))
+	check(err)
+
+	for err == nil {
+		docLenBytes, err = reader.Peek(4)
+		if err == io.EOF {
+			break
+		}
+		check(err)
+		docLen = bytesToInt32(docLenBytes[:])
+
+		readBuffer = make([]byte, docLen)
+		_, err = io.ReadFull(reader, readBuffer)
+		check(err)
+
+		_, err = tempFile.Write(readBuffer)
+		check(err)
+	}
+	//if EOF reading, then move the updated DB to the colletion loc
+	if err == io.EOF {
+		//close files before moving them
+		tempFile.Close()
+		f.Close()
+
+		dbFileName := f.Name()
+
+		fmt.Println(tempFile.Name())
+
+		err = os.Rename(dbFileName, dbFileName+".bak")
+		check(err)
+
+		err = os.Rename(tempFile.Name(), dbFileName)
+		check(err)
+
+		err = os.Remove(dbFileName + ".bak")
+		check(err)
+		err = nil
+	}
+	return err
+}*/
 
 //reads 1 full document into memory and returns it as an interface
 //returns the doucment and pointer location in the file
