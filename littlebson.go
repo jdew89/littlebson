@@ -120,7 +120,7 @@ func runTest() {
 	fmt.Println("building lbson")
 	start := time.Now()
 
-	testarr := make([]Athing, 2)
+	testarr := make([]Athing, 10)
 	for i := 0; i < len(testarr); i++ {
 		something = Athing{genLilBsonID(), "Duuude" + fmt.Sprint(i), int64(i), int32(100) + int32(i), 1000 + uint64(i), false, mystrarr, 56.91 + float64(i)}
 		testarr[i] = something
@@ -138,7 +138,7 @@ func runTest() {
 
 	query := make([]SearchDocument, 1)
 	//query[0] = SearchDocument{"TestStr", "(?i)DuUude"}
-	query[0] = SearchDocument{"TestStr", "Duuude1"}
+	query[0] = SearchDocument{"TestStr", "Duuude6"}
 	//query[1] = SearchDocument{"Num64", 6}
 	//query[2] = SearchDocument{"Num32", int32(106)}
 	//query[0] = SearchDocument{"TestStr", "Duuude"}
@@ -168,8 +168,9 @@ func runTest() {
 	duration = time.Since(start)
 	fmt.Println("lbson read time:", duration.Milliseconds())
 
-	updateDoc := make([]SearchDocument, 1)
+	updateDoc := make([]SearchDocument, 2)
 	updateDoc[0] = SearchDocument{"TestStr", "Duuude6updated"}
+	updateDoc[1] = SearchDocument{"Num64", int64(66)}
 	fmt.Println("callig updateOne")
 	err = UpdateOne("data", query[:], updateDoc[:])
 }

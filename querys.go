@@ -333,7 +333,7 @@ func UpdateOne(collection_name string, search_arr []SearchDocument, update_docum
 	if found {
 		//update the fields
 		for i := 0; i < len(update_document); i++ {
-			doc_val.FieldByName(update_document[i].FieldName).Set(reflect.ValueOf(update_document[0].FieldValue))
+			doc_val.FieldByName(update_document[i].FieldName).Set(reflect.ValueOf(update_document[i].FieldValue))
 		}
 
 		updatedDocBytes := buildDocumentBytes(doc_val.Interface())
