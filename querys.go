@@ -272,7 +272,6 @@ func UpdateOne(collection_name string, search_arr []SearchDocument, update_docum
 	reader, f := openCollection(collection_name)
 	defer f.Close()
 	var err error
-	var file_loc_pointer int64 = 0
 
 	fmt.Println("Finding...", search_arr)
 
@@ -292,17 +291,17 @@ func UpdateOne(collection_name string, search_arr []SearchDocument, update_docum
 
 	//var doc interface{}
 	var doc_val reflect.Value
+	var curr_doc_pointer int64 = 0 //tracks current position in file
+	var prev_doc_pointer int64 = 0 //tracks previous doc loc
 
 	found := false
 	for !found {
-		//use next_file loc_pointer so we can keep the current document loc for updating if it's found
-		doc_val, next_file_loc_pointer, err := readOneDocument(reader, file_loc_pointer)
+		doc_val, curr_doc_pointer, err = readOneDocument(reader, curr_doc_pointer)
+
 		if err != nil {
 			fmt.Println("err finding", err)
 			return err
 		}
-
-		//doc_val := reflect.ValueOf(doc)
 
 		//if the field does not exist, ignore it
 		if doc_val.FieldByName(search_arr[0].FieldName).IsValid() {
@@ -326,33 +325,21 @@ func UpdateOne(collection_name string, search_arr []SearchDocument, update_docum
 		}
 		if !found {
 			//move pointer to next document if not found
-			file_loc_pointer = next_file_loc_pointer
+			prev_doc_pointer = curr_doc_pointer
 		}
-		fmt.Println("doc: ", doc_val)
 	}
-
-	IF YOU COMMENT OUT THE NEW FILE LOC POINTER STUFF IT WORKS AGAIN.
-	trying to work on getting the file loc poitner of the updated document. 
-	I realized it actually sends me the NEXT document location.
 
 	//if found, update the document
 	if found {
-
-		//peeked_val, _ := reader.Peek(1)
-		//fmt.Println("found for update - peek: ", peeked_val)
-
-		fmt.Println("doc: ", doc_val)
-		fmt.Println("can set:", doc_val.CanSet())
-
+		//update the fields
 		for i := 0; i < len(update_document); i++ {
 			doc_val.FieldByName(update_document[i].FieldName).Set(reflect.ValueOf(update_document[0].FieldValue))
 		}
 
-		fmt.Println("updated doc:", doc_val)
-
 		updatedDocBytes := buildDocumentBytes(doc_val.Interface())
 
-		UpdateBSON(collection_name, file_loc_pointer, updatedDocBytes[:], reader, f)
+		err = UpdateBSON(collection_name, prev_doc_pointer, updatedDocBytes[:], reader, f)
+		check(err)
 	}
 
 	return err

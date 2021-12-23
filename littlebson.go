@@ -259,31 +259,29 @@ func writeBSON(file *os.File, data []byte) error {
 }
 
 //writes to a temp file, then renames to main file
-func UpdateBSON(collectionName string, updatedDocLocation int64, updatedDocBytes []byte, reader *bufio.Reader, f *os.File) {
+func UpdateBSON(collectionName string, updatedDocLocation int64, updatedDocBytes []byte, reader *bufio.Reader, f *os.File) error {
 	f.Seek(0, 0)
 	reader.Reset(f)
-	//reader.Discard(int(updatedDocLocation))
-	fmt.Println("updated doc loc:", updatedDocLocation)
 
-	file, err := os.CreateTemp("C:\\Users\\JD\\Documents\\golang", "lbson*")
+	//tempFile, err := os.CreateTemp("C:\\Users\\JD\\Documents\\golang", "lbson*")
+	tempFile, err := os.CreateTemp("", "lbson*")
 	check(err)
 
 	readBuffer := make([]byte, updatedDocLocation)
 	_, err = io.ReadFull(reader, readBuffer)
 	check(err)
 
-	file.Write(readBuffer)
-	file.Write(updatedDocBytes)
+	tempFile.Write(readBuffer)
+	tempFile.Write(updatedDocBytes)
 
 	//skip over the old document
 	docLenBytes, err := reader.Peek(4)
 	check(err)
 	docLen := bytesToInt32(docLenBytes[:])
-	reader.Discard(int(docLen))
-
+	_, err = reader.Discard(int(docLen))
 	check(err)
+
 	for err == nil {
-		fmt.Println("peeking")
 		docLenBytes, err = reader.Peek(4)
 		if err == io.EOF {
 			break
@@ -295,20 +293,41 @@ func UpdateBSON(collectionName string, updatedDocLocation int64, updatedDocBytes
 		_, err = io.ReadFull(reader, readBuffer)
 		check(err)
 
-		_, err = file.Write(readBuffer)
+		_, err = tempFile.Write(readBuffer)
 		check(err)
 	}
 	//if EOF reading, then move the updated DB to the colletion loc
 	if err == io.EOF {
-		fmt.Println("hit EOF")
+		//close files before moving them
+		tempFile.Close()
+		f.Close()
+
+		dbFileName := f.Name()
+
+		fmt.Println(tempFile.Name())
+
+		err = os.Rename(dbFileName, dbFileName+".bak")
+		check(err)
+
+		err = os.Rename(tempFile.Name(), dbFileName)
+		check(err)
+
+		err = os.Remove(dbFileName + ".bak")
+		check(err)
+		err = nil
 	}
+	return err
 }
 
 //reads 1 full document into memory and returns it as an interface
 //returns the doucment and pointer location in the file
 func readOneDocument(reader *bufio.Reader, p int64) (reflect.Value, int64, error) {
-	docLenBytes := make([]byte, 4)
+	//docLenBytes := make([]byte, 4)
 	docLenBytes, err := reader.Peek(4) //gets the first document length
+	if err != nil {
+		var empty interface{}
+		return reflect.ValueOf(empty), p, err
+	}
 	docLen := bytesToInt32(docLenBytes[:])
 	//fmt.Println("doc length: ", docLenBytes)
 	//fmt.Println("doc len: ", docLen)
