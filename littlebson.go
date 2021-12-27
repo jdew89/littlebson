@@ -8,6 +8,7 @@ import (
 	"math/rand"
 	"os"
 	"reflect"
+	"sort"
 	"time"
 
 	"github.com/denisbrodbeck/machineid"
@@ -323,67 +324,86 @@ func UpdateBSON(collectionName string, updatedDocLocation int64, updatedDocBytes
 }
 
 //writes to a temp file, then renames to main file
-func UpdateManyBSON(collectionName string, updatedDocuments map[int64][]byte, reader *bufio.Reader, f *os.File) error {
+func UpdateManyBSON(collectionName string, updatedDocumentBytes map[int][]byte, reader *bufio.Reader, f *os.File) error {
+	fileInfo, err := f.Stat()
+	check(err)
+
 	f.Seek(0, 0)
 	reader.Reset(f)
 
-	tempFile, err := os.CreateTemp("C:\\Users\\JD\\Documents\\golang\\littlebson", "lbson*")
-	//tempFile, err := os.CreateTemp("", "lbson*")
+	//tempFile, err := os.CreateTemp("C:\\Users\\JD\\Documents\\golang\\littlebson", "lbson*")
+	//tempFile, err := os.CreateTemp("C:\\Users\\i31586\\Documents\\go\\littlebson", "lbson*")
+	tempFile, err := os.CreateTemp("", "lbson*")
 	check(err)
 
-	for k, elem := range updatedDocuments {
+	var file_byte_pointer int = 0
+	updatedDocumentByteKeys := SortUpdatedDocumentKeys(updatedDocumentBytes)
+	for i := range updatedDocumentByteKeys {
+		//read the difference between current pointer and the updated document
+		fmt.Println("doc pointer:", updatedDocumentByteKeys[i], "file pointer:", file_byte_pointer)
 
+		pointerDistanceToDoc := updatedDocumentByteKeys[i] - file_byte_pointer
+		//only write old stuff if we read bytes
+		if pointerDistanceToDoc > 0 {
+			readBuffer := make([]byte, pointerDistanceToDoc)
+			_, err = io.ReadFull(reader, readBuffer)
+			check(err)
+
+			tempFile.Write(readBuffer[:])
+		}
+		tempFile.Write(updatedDocumentBytes[updatedDocumentByteKeys[i]][:])
+
+		//skip over the old document
+		oldDocLenBytes, err := reader.Peek(4)
+		check(err)
+		oldDocLen := bytesToInt32(oldDocLenBytes[:])
+		_, err = reader.Discard(int(oldDocLen))
+		check(err)
+
+		file_byte_pointer += pointerDistanceToDoc + int(oldDocLen)
+		fmt.Println("pointer:", file_byte_pointer)
 	}
-	readBuffer := make([]byte, updatedDocLocation)
+
+	//read to end of file and copy it over after all the updated docs are written
+	fmt.Println("file size:", fileInfo.Size(), "pointer:", file_byte_pointer)
+	readBuffer := make([]byte, fileInfo.Size()-int64(file_byte_pointer))
 	_, err = io.ReadFull(reader, readBuffer)
 	check(err)
-
 	tempFile.Write(readBuffer)
-	tempFile.Write(updatedDocBytes)
 
-	//skip over the old document
-	docLenBytes, err := reader.Peek(4)
+	//then move the updated DB to the collection loc
+	//close files before moving them
+	tempFile.Close()
+	f.Close()
+
+	dbFileName := f.Name()
+
+	fmt.Println(tempFile.Name())
+
+	err = os.Rename(dbFileName, dbFileName+".bak")
 	check(err)
-	docLen := bytesToInt32(docLenBytes[:])
-	_, err = reader.Discard(int(docLen))
+
+	err = os.Rename(tempFile.Name(), dbFileName)
 	check(err)
 
-	for err == nil {
-		docLenBytes, err = reader.Peek(4)
-		if err == io.EOF {
-			break
-		}
-		check(err)
-		docLen = bytesToInt32(docLenBytes[:])
+	err = os.Remove(dbFileName + ".bak")
+	check(err)
+	err = nil
 
-		readBuffer = make([]byte, docLen)
-		_, err = io.ReadFull(reader, readBuffer)
-		check(err)
-
-		_, err = tempFile.Write(readBuffer)
-		check(err)
-	}
-	//if EOF reading, then move the updated DB to the colletion loc
-	if err == io.EOF {
-		//close files before moving them
-		tempFile.Close()
-		f.Close()
-
-		dbFileName := f.Name()
-
-		fmt.Println(tempFile.Name())
-
-		err = os.Rename(dbFileName, dbFileName+".bak")
-		check(err)
-
-		err = os.Rename(tempFile.Name(), dbFileName)
-		check(err)
-
-		err = os.Remove(dbFileName + ".bak")
-		check(err)
-		err = nil
-	}
 	return err
+}
+
+//sorts keys in a map and returns the keys in order
+func SortUpdatedDocumentKeys(m map[int][]byte) []int {
+	keys := make([]int, len(m))
+	i := 0
+	for k := range m {
+		keys[i] = k
+		i++
+	}
+	sort.Ints(keys)
+	fmt.Println("KEYS: ", keys[:])
+	return keys[:]
 }
 
 //reads 1 full document into memory and returns it as an interface

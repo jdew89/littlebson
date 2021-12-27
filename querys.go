@@ -371,7 +371,7 @@ func UpdateMany(collection_name string, search_arr []SearchDocument, update_docu
 	//var doc interface{}
 	//var doc_val reflect.Value
 	//var found_docs []reflect.Value
-	found_docs := make(map[int64]reflect.Value) //stores the file loc of doc and updated value
+	found_docs := make(map[int]reflect.Value) //stores the file loc of doc and updated value
 
 	var curr_doc_pointer int64 = 0 //tracks current position in file
 	var prev_doc_pointer int64 = 0 //tracks previous doc loc
@@ -414,7 +414,7 @@ func UpdateMany(collection_name string, search_arr []SearchDocument, update_docu
 				}
 			}
 			if found {
-				found_docs[prev_doc_pointer] = doc_val
+				found_docs[int(prev_doc_pointer)] = doc_val
 			}
 		}
 		prev_doc_pointer = curr_doc_pointer
@@ -428,7 +428,7 @@ func UpdateMany(collection_name string, search_arr []SearchDocument, update_docu
 			fmt.Print(k, ":", elem.Interface())
 		}
 
-		updatedDocBytes := make(map[int64][]byte)
+		updatedDocBytes := make(map[int][]byte)
 		for k, elem := range found_docs {
 			//update the fields
 			for i := 0; i < len(update_document_fields); i++ {
@@ -442,6 +442,7 @@ func UpdateMany(collection_name string, search_arr []SearchDocument, update_docu
 		fmt.Println("after:")
 		for k, elem := range found_docs {
 			fmt.Print(k, ":", elem.Interface())
+			fmt.Println("")
 		}
 
 		err = UpdateManyBSON(collection_name, updatedDocBytes, reader, f)
