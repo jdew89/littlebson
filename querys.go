@@ -269,7 +269,7 @@ func FindCount(collection_name string, search_arr []SearchDocument) (int64, erro
 	return count, err
 }
 
-func UpdateOne(collection_name string, search_arr []SearchDocument, update_document []SearchDocument) error {
+func UpdateOne(collection_name string, search_arr []SearchDocument, update_document_fields []SearchDocument) error {
 	reader, f := openCollection(collection_name)
 	defer f.Close()
 	var err error
@@ -298,6 +298,7 @@ func UpdateOne(collection_name string, search_arr []SearchDocument, update_docum
 	found := false
 	for !found {
 		doc_val, curr_doc_pointer, err = readOneDocument(reader, curr_doc_pointer)
+		//fmt.Println("prev", prev_doc_pointer, " - curr", curr_doc_pointer)
 
 		if err != nil {
 			fmt.Println("err finding", err)
@@ -333,8 +334,8 @@ func UpdateOne(collection_name string, search_arr []SearchDocument, update_docum
 	//if found, update the document
 	if found {
 		//update the fields
-		for i := 0; i < len(update_document); i++ {
-			doc_val.FieldByName(update_document[i].FieldName).Set(reflect.ValueOf(update_document[i].FieldValue))
+		for i := 0; i < len(update_document_fields); i++ {
+			doc_val.FieldByName(update_document_fields[i].FieldName).Set(reflect.ValueOf(update_document_fields[i].FieldValue))
 		}
 
 		updatedDocBytes := buildDocumentBytes(doc_val.Interface())
@@ -346,7 +347,7 @@ func UpdateOne(collection_name string, search_arr []SearchDocument, update_docum
 	return err
 }
 
-func UpdateMany(collection_name string, search_arr []SearchDocument, update_document []SearchDocument) error {
+func UpdateMany(collection_name string, search_arr []SearchDocument, update_document_fields []SearchDocument) error {
 	reader, f := openCollection(collection_name)
 	defer f.Close()
 	var err error
@@ -377,10 +378,10 @@ func UpdateMany(collection_name string, search_arr []SearchDocument, update_docu
 
 	// loops until it reaches EOF
 	for {
-		doc_val, curr_doc_pointer, err := readOneDocument(reader, curr_doc_pointer)
-		something is wrong with these pointers again
-		fmt.Println("prev", prev_doc_pointer, " - curr", curr_doc_pointer)
-		fmt.Println(doc_val.Interface())
+		var doc_val reflect.Value
+		doc_val, curr_doc_pointer, err = readOneDocument(reader, curr_doc_pointer)
+		//fmt.Println("prev", prev_doc_pointer, " - curr", curr_doc_pointer)
+		//fmt.Println(doc_val.Interface())
 		if err != nil {
 			if err == io.EOF { //only break if EOF
 				break
@@ -421,15 +422,20 @@ func UpdateMany(collection_name string, search_arr []SearchDocument, update_docu
 
 	//if found, update the document
 	if len(found_docs) > 0 {
+		fmt.Println("docs to update:", len(found_docs))
 		fmt.Println("before update:")
 		for k, elem := range found_docs {
 			fmt.Print(k, ":", elem.Interface())
 		}
-		for _, elem := range found_docs {
+
+		updatedDocBytes := make(map[int64][]byte)
+		for k, elem := range found_docs {
 			//update the fields
-			for i := 0; i < len(update_document); i++ {
-				elem.FieldByName(update_document[i].FieldName).Set(reflect.ValueOf(update_document[i].FieldValue))
+			for i := 0; i < len(update_document_fields); i++ {
+				elem.FieldByName(update_document_fields[i].FieldName).Set(reflect.ValueOf(update_document_fields[i].FieldValue))
 			}
+
+			updatedDocBytes[k] = buildDocumentBytes(elem.Interface())
 		}
 
 		fmt.Println("")
@@ -438,9 +444,7 @@ func UpdateMany(collection_name string, search_arr []SearchDocument, update_docu
 			fmt.Print(k, ":", elem.Interface())
 		}
 
-		//updatedDocBytes := buildDocumentBytes(doc_val.Interface())
-
-		//err = UpdateBSON(collection_name, prev_doc_pointer, updatedDocBytes[:], reader, f)
+		err = UpdateManyBSON(collection_name, updatedDocBytes, reader, f)
 		//check(err)
 	}
 

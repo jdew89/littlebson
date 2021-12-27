@@ -120,7 +120,7 @@ func runTest() {
 	fmt.Println("building lbson")
 	start := time.Now()
 
-	testarr := make([]Athing, 10)
+	testarr := make([]Athing, 12)
 	for i := 0; i < len(testarr); i++ {
 		something = Athing{genLilBsonID(), "Duuude" + fmt.Sprint(i), int64(i), int32(100) + int32(i), 1000 + uint64(i), false, mystrarr, 56.91 + float64(i)}
 		testarr[i] = something
@@ -171,7 +171,7 @@ func runTest() {
 	updateDoc := make([]SearchDocument, 2)
 	updateDoc[0] = SearchDocument{"TestStr", "Duuude6updated"}
 	updateDoc[1] = SearchDocument{"Num64", int64(66)}
-	fmt.Println("callig updateOne")
+	fmt.Println("callig update")
 	//err = UpdateOne("data", query[:], updateDoc[:])
 	err = UpdateMany("data", query[:], updateDoc[:])
 }
@@ -283,6 +283,7 @@ func UpdateBSON(collectionName string, updatedDocLocation int64, updatedDocBytes
 	_, err = reader.Discard(int(docLen))
 	check(err)
 
+	//copy old data and insert updated documents in their place
 	for err == nil {
 		docLenBytes, err = reader.Peek(4)
 		if err == io.EOF {
@@ -321,16 +322,18 @@ func UpdateBSON(collectionName string, updatedDocLocation int64, updatedDocBytes
 	return err
 }
 
-/*
 //writes to a temp file, then renames to main file
-func UpdateManyBSON(collectionName string, updatedDocuments, reader *bufio.Reader, f *os.File) error {
+func UpdateManyBSON(collectionName string, updatedDocuments map[int64][]byte, reader *bufio.Reader, f *os.File) error {
 	f.Seek(0, 0)
 	reader.Reset(f)
 
-	//tempFile, err := os.CreateTemp("C:\\Users\\JD\\Documents\\golang", "lbson*")
-	tempFile, err := os.CreateTemp("", "lbson*")
+	tempFile, err := os.CreateTemp("C:\\Users\\JD\\Documents\\golang\\littlebson", "lbson*")
+	//tempFile, err := os.CreateTemp("", "lbson*")
 	check(err)
 
+	for k, elem := range updatedDocuments {
+
+	}
 	readBuffer := make([]byte, updatedDocLocation)
 	_, err = io.ReadFull(reader, readBuffer)
 	check(err)
@@ -381,7 +384,7 @@ func UpdateManyBSON(collectionName string, updatedDocuments, reader *bufio.Reade
 		err = nil
 	}
 	return err
-}*/
+}
 
 //reads 1 full document into memory and returns it as an interface
 //returns the doucment and pointer location in the file
