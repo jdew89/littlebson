@@ -172,9 +172,11 @@ func runTest() {
 	updateDoc := make([]SearchDocument, 2)
 	updateDoc[0] = SearchDocument{"TestStr", "Duuude6updated"}
 	updateDoc[1] = SearchDocument{"Num64", int64(66)}
-	fmt.Println("callig update")
+	fmt.Println("callig query")
 	//err = UpdateOne("data", query[:], updateDoc[:])
-	err = UpdateMany("data", query[:], updateDoc[:])
+
+	err = DeleteOne("data", query[:])
+	//err = UpdateMany("data", query[:], updateDoc[:])
 }
 
 /*
@@ -262,9 +264,9 @@ func writeBSON(file *os.File, data []byte) error {
 }
 
 //writes to a temp file, then renames to main file
-func UpdateBSON(collectionName string, updatedDocLocation int64, updatedDocBytes []byte, reader *bufio.Reader, f *os.File) error {
-	f.Seek(0, 0)
-	reader.Reset(f)
+func UpdateBSON(collectionName string, updatedDocLocation int64, updatedDocBytes []byte, reader *bufio.Reader, dbFile *os.File) error {
+	dbFile.Seek(0, 0)
+	reader.Reset(dbFile)
 
 	//tempFile, err := os.CreateTemp("C:\\Users\\JD\\Documents\\golang", "lbson*")
 	tempFile, err := os.CreateTemp("", "lbson*")
@@ -302,34 +304,19 @@ func UpdateBSON(collectionName string, updatedDocLocation int64, updatedDocBytes
 	}
 	//if EOF reading, then move the updated DB to the colletion loc
 	if err == io.EOF {
-		//close files before moving them
-		tempFile.Close()
-		f.Close()
-
-		dbFileName := f.Name()
-
-		fmt.Println(tempFile.Name())
-
-		err = os.Rename(dbFileName, dbFileName+".bak")
+		err = MoveTempFile(tempFile, dbFile)
 		check(err)
-
-		err = os.Rename(tempFile.Name(), dbFileName)
-		check(err)
-
-		err = os.Remove(dbFileName + ".bak")
-		check(err)
-		err = nil
 	}
 	return err
 }
 
 //writes to a temp file, then renames to main file
-func UpdateManyBSON(collectionName string, updatedDocumentBytes map[int][]byte, reader *bufio.Reader, f *os.File) error {
-	fileInfo, err := f.Stat()
+func UpdateManyBSON(collectionName string, updatedDocumentBytes map[int][]byte, reader *bufio.Reader, dbFile *os.File) error {
+	fileInfo, err := dbFile.Stat()
 	check(err)
 
-	f.Seek(0, 0)
-	reader.Reset(f)
+	dbFile.Seek(0, 0)
+	reader.Reset(dbFile)
 
 	//tempFile, err := os.CreateTemp("C:\\Users\\JD\\Documents\\golang\\littlebson", "lbson*")
 	//tempFile, err := os.CreateTemp("C:\\Users\\i31586\\Documents\\go\\littlebson", "lbson*")
@@ -371,16 +358,60 @@ func UpdateManyBSON(collectionName string, updatedDocumentBytes map[int][]byte, 
 	check(err)
 	tempFile.Write(readBuffer)
 
-	//then move the updated DB to the collection loc
-	//close files before moving them
-	tempFile.Close()
-	f.Close()
+	err = MoveTempFile(tempFile, dbFile)
+	check(err)
 
-	dbFileName := f.Name()
+	return err
+}
+
+func DeleteOneBSON(collectionName string, deletedDocLoc int64, reader *bufio.Reader, dbFile *os.File) error {
+	fileInfo, err := dbFile.Stat()
+	dbFile.Seek(0, 0)
+	reader.Reset(dbFile)
+
+	var file_byte_pointer int64 = 0
+
+	//tempFile, err := os.CreateTemp("C:\\Users\\JD\\Documents\\golang", "lbson*")
+	tempFile, err := os.CreateTemp("", "lbson*")
+	check(err)
+
+	readBuffer := make([]byte, deletedDocLoc)
+	_, err = io.ReadFull(reader, readBuffer)
+	check(err)
+
+	tempFile.Write(readBuffer)
+
+	//skip over the old document
+	docLenBytes, err := reader.Peek(4)
+	check(err)
+	docLen := bytesToInt32(docLenBytes[:])
+	_, err = reader.Discard(int(docLen))
+	check(err)
+
+	file_byte_pointer = deletedDocLoc + int64(docLen)
+
+	//read to end of file and copy it over after all the updated docs are written
+	fmt.Println("file size:", fileInfo.Size(), "pointer:", file_byte_pointer)
+	readBuffer = make([]byte, fileInfo.Size()-file_byte_pointer)
+	_, err = io.ReadFull(reader, readBuffer)
+	check(err)
+	tempFile.Write(readBuffer)
+
+	err = MoveTempFile(tempFile, dbFile)
+	check(err)
+
+	return err
+}
+
+func MoveTempFile(tempFile *os.File, dbFile *os.File) error {
+	tempFile.Close()
+	dbFile.Close()
+
+	dbFileName := dbFile.Name()
 
 	fmt.Println(tempFile.Name())
 
-	err = os.Rename(dbFileName, dbFileName+".bak")
+	err := os.Rename(dbFileName, dbFileName+".bak")
 	check(err)
 
 	err = os.Rename(tempFile.Name(), dbFileName)
@@ -388,7 +419,6 @@ func UpdateManyBSON(collectionName string, updatedDocumentBytes map[int][]byte, 
 
 	err = os.Remove(dbFileName + ".bak")
 	check(err)
-	err = nil
 
 	return err
 }

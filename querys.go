@@ -368,9 +368,6 @@ func UpdateMany(collection_name string, search_arr []SearchDocument, update_docu
 		}
 	}
 
-	//var doc interface{}
-	//var doc_val reflect.Value
-	//var found_docs []reflect.Value
 	found_docs := make(map[int]reflect.Value) //stores the file loc of doc and updated value
 
 	var curr_doc_pointer int64 = 0 //tracks current position in file
@@ -404,7 +401,6 @@ func UpdateMany(collection_name string, search_arr []SearchDocument, update_docu
 						return err
 					}
 				} else {
-					//found = doc_val.FieldByName(search_arr[0].FieldName).Interface() == reflect.ValueOf(search_arr[0].FieldValue).Interface()
 					found = doc_val.FieldByName(srch_obj.FieldName).Interface() == srch_obj.FieldValue
 				}
 
@@ -447,6 +443,77 @@ func UpdateMany(collection_name string, search_arr []SearchDocument, update_docu
 
 		err = UpdateManyBSON(collection_name, updatedDocBytes, reader, f)
 		//check(err)
+	}
+
+	return err
+}
+
+func DeleteOne(collection_name string, search_arr []SearchDocument) error {
+	reader, f := openCollection(collection_name)
+	defer f.Close()
+	var err error
+
+	fmt.Println("Finding...", search_arr)
+
+	for i, obj := range search_arr {
+		//this swtich converts ints to int64's
+		//this is because golang converts int's to the underlying architecture.
+		//If the architecture is 32, it will convert to int64 just fine.
+		switch obj.FieldValue.(type) {
+		case int:
+			val := int64(reflect.ValueOf(obj.FieldValue).Interface().(int))
+			search_arr[i].FieldValue = val
+		case uint:
+			val := uint64(reflect.ValueOf(obj.FieldValue).Interface().(uint))
+			search_arr[i].FieldValue = val
+		}
+	}
+
+	//var doc interface{}
+	var doc_val reflect.Value
+	var curr_doc_pointer int64 = 0 //tracks current position in file
+	var prev_doc_pointer int64 = 0 //tracks previous doc loc
+
+	found := false
+	for !found {
+		doc_val, curr_doc_pointer, err = readOneDocument(reader, curr_doc_pointer)
+		//fmt.Println("prev", prev_doc_pointer, " - curr", curr_doc_pointer)
+
+		if err != nil {
+			fmt.Println("err finding", err)
+			return err
+		}
+
+		//if the field does not exist, ignore it
+		if doc_val.FieldByName(search_arr[0].FieldName).IsValid() {
+			//check all fields, must match all of them
+			for _, srch_obj := range search_arr {
+				// if the field is a string, use regex
+				if reflect.ValueOf(srch_obj.FieldValue).Kind() == reflect.String && doc_val.FieldByName(srch_obj.FieldName).Kind() == reflect.String {
+					found, err = regexp.MatchString(srch_obj.FieldValue.(string), doc_val.FieldByName(srch_obj.FieldName).Interface().(string))
+					if err != nil {
+						return err
+					}
+				} else {
+					found = doc_val.FieldByName(srch_obj.FieldName).Interface() == srch_obj.FieldValue
+				}
+
+				//if one doesn't match, break
+				if !found {
+					break
+				}
+			}
+		}
+		if !found {
+			//move pointer to next document if not found
+			prev_doc_pointer = curr_doc_pointer
+		}
+	}
+
+	//if found, delete the document
+	if found {
+		err = DeleteOneBSON(collection_name, prev_doc_pointer, reader, f)
+		check(err)
 	}
 
 	return err
