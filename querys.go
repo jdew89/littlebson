@@ -8,6 +8,7 @@ import (
 	"os"
 	"reflect"
 	"regexp"
+	"sort"
 )
 
 //This file has all of the possible query functions.
@@ -514,6 +515,96 @@ func DeleteOne(collection_name string, search_arr []SearchDocument) error {
 	if found {
 		err = DeleteOneBSON(collection_name, prev_doc_pointer, reader, f)
 		check(err)
+	}
+
+	return err
+}
+
+func DeleteMany(collection_name string, search_arr []SearchDocument) error {
+	reader, f := openCollection(collection_name)
+	defer f.Close()
+	var err error
+
+	fmt.Println("Finding...", search_arr)
+
+	for i, obj := range search_arr {
+		//this swtich converts ints to int64's
+		//this is because golang converts int's to the underlying architecture.
+		//If the architecture is 32, it will convert to int64 just fine.
+		switch obj.FieldValue.(type) {
+		case int:
+			val := int64(reflect.ValueOf(obj.FieldValue).Interface().(int))
+			search_arr[i].FieldValue = val
+		case uint:
+			val := uint64(reflect.ValueOf(obj.FieldValue).Interface().(uint))
+			search_arr[i].FieldValue = val
+		}
+	}
+
+	found_docs := make(map[int]reflect.Value) //stores the file loc of doc and updated value
+
+	var curr_doc_pointer int64 = 0 //tracks current position in file
+	var prev_doc_pointer int64 = 0 //tracks previous doc loc
+
+	// loops until it reaches EOF
+	for {
+		var doc_val reflect.Value
+		doc_val, curr_doc_pointer, err = readOneDocument(reader, curr_doc_pointer)
+		//fmt.Println("prev", prev_doc_pointer, " - curr", curr_doc_pointer)
+		//fmt.Println(doc_val.Interface())
+		if err != nil {
+			if err == io.EOF { //only break if EOF
+				break
+			} else { //if some other error, return it
+				return err
+			}
+		}
+
+		//if the field does not exist, ignore it
+		//TODO THIS SHOULD PROBABLY BE IN THE LOOP
+		if doc_val.FieldByName(search_arr[0].FieldName).IsValid() {
+			found := false
+
+			//check all fields, must match all of them
+			for _, srch_obj := range search_arr {
+				// if the field is a string, use regex
+				if reflect.ValueOf(srch_obj.FieldValue).Kind() == reflect.String && doc_val.FieldByName(srch_obj.FieldName).Kind() == reflect.String {
+					found, err = regexp.MatchString(srch_obj.FieldValue.(string), doc_val.FieldByName(srch_obj.FieldName).Interface().(string))
+					if err != nil {
+						return err
+					}
+				} else {
+					found = doc_val.FieldByName(srch_obj.FieldName).Interface() == srch_obj.FieldValue
+				}
+
+				//if one doesn't match, break
+				if !found {
+					break
+				}
+			}
+			if found {
+				found_docs[int(prev_doc_pointer)] = doc_val
+			}
+		}
+		prev_doc_pointer = curr_doc_pointer
+	}
+
+	//if found, update the document
+	if len(found_docs) > 0 {
+		fmt.Println("docs to delete:", len(found_docs))
+
+		//gets map keys
+		deleteDocsLocs := make([]int, len(found_docs))
+		i := 0
+		for k := range found_docs {
+			deleteDocsLocs[i] = k
+			i++
+		}
+		sort.Ints(deleteDocsLocs)
+		fmt.Println("KEYS: ", deleteDocsLocs[:])
+
+		err = DeleteManyBSON(collection_name, deleteDocsLocs[:], reader, f)
+		//check(err)
 	}
 
 	return err

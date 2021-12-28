@@ -139,7 +139,7 @@ func runTest() {
 
 	query := make([]SearchDocument, 1)
 	//query[0] = SearchDocument{"TestStr", "(?i)DuUude"}
-	query[0] = SearchDocument{"TestStr", "Duuude[6,7]"}
+	query[0] = SearchDocument{"TestStr", "Duuude[6,7,8]"}
 	//query[1] = SearchDocument{"Num64", 6}
 	//query[2] = SearchDocument{"Num32", int32(106)}
 	//query[0] = SearchDocument{"TestStr", "Duuude"}
@@ -175,7 +175,8 @@ func runTest() {
 	fmt.Println("callig query")
 	//err = UpdateOne("data", query[:], updateDoc[:])
 
-	err = DeleteOne("data", query[:])
+	//err = DeleteOne("data", query[:])
+	err = DeleteMany("data", query[:])
 	//err = UpdateMany("data", query[:], updateDoc[:])
 }
 
@@ -393,6 +394,48 @@ func DeleteOneBSON(collectionName string, deletedDocLoc int64, reader *bufio.Rea
 	//read to end of file and copy it over after all the updated docs are written
 	fmt.Println("file size:", fileInfo.Size(), "pointer:", file_byte_pointer)
 	readBuffer = make([]byte, fileInfo.Size()-file_byte_pointer)
+	_, err = io.ReadFull(reader, readBuffer)
+	check(err)
+	tempFile.Write(readBuffer)
+
+	err = MoveTempFile(tempFile, dbFile)
+	check(err)
+
+	return err
+}
+
+//writes to a temp file, then renames to main file
+func DeleteManyBSON(collectionName string, deleteDocOffsets []int, reader *bufio.Reader, dbFile *os.File) error {
+	fileInfo, err := dbFile.Stat()
+	dbFile.Seek(0, 0)
+	reader.Reset(dbFile)
+
+	var file_byte_pointer int = 0
+
+	//tempFile, err := os.CreateTemp("C:\\Users\\JD\\Documents\\golang", "lbson*")
+	tempFile, err := os.CreateTemp("", "lbson*")
+	check(err)
+
+	for _, offset := range deleteDocOffsets {
+		readBuffer := make([]byte, offset-file_byte_pointer)
+		_, err = io.ReadFull(reader, readBuffer)
+		check(err)
+
+		tempFile.Write(readBuffer)
+
+		//skip over the old document
+		docLenBytes, err := reader.Peek(4)
+		check(err)
+		docLen := bytesToInt32(docLenBytes[:])
+		_, err = reader.Discard(int(docLen))
+		check(err)
+
+		file_byte_pointer = offset + int(docLen)
+	}
+
+	//read to end of file and copy it over after all the updated docs are written
+	//fmt.Println("file size:", fileInfo.Size(), "pointer:", file_byte_pointer)
+	readBuffer := make([]byte, fileInfo.Size()-int64(file_byte_pointer))
 	_, err = io.ReadFull(reader, readBuffer)
 	check(err)
 	tempFile.Write(readBuffer)
