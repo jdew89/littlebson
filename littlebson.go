@@ -47,7 +47,7 @@ type Athing struct {
 	Float   float64
 }
 
-type SearchDocument struct {
+type SearchField struct {
 	FieldName   string
 	FieldValue  interface{}
 	CompareType string //eq neq gt lt gte lte rgx
@@ -91,12 +91,12 @@ func runTest() {
 	start = time.Now()
 	//fmt.Printf("%+v\n", something)
 
-	query := make([]SearchDocument, 2)
-	//query[0] = SearchDocument{"TestStr", "(?i)DuUude"}
-	query[0] = SearchDocument{"TestStr", "Duuude[6,7,8]", "rgx"}
-	//query[1] = SearchDocument{"TestStr", "Duuude6", "eq"}
-	query[1] = SearchDocument{"Num64", 6, "neq"}
-	//query[2] = SearchDocument{"Num32", int32(106)}
+	query := make([]SearchField, 2)
+	//query[0] = SearchField{"TestStr", "(?i)DuUude"}
+	query[0] = SearchField{"TestStr", "Duuude[6,7,8]", "rgx"}
+	query[0] = SearchField{"TestStr", "Duuude6", "gt"}
+	query[1] = SearchField{"Num64", 8, "lt"}
+	//query[2] = SearchField{"Num32", int32(106)}
 
 	doc, err := findOne("data", query)
 	if err == nil {
@@ -121,9 +121,9 @@ func runTest() {
 	duration = time.Since(start)
 	fmt.Println("lbson read time:", duration.Milliseconds())
 
-	//updateDoc := make([]SearchDocument, 2)
-	//updateDoc[0] = SearchDocument{"TestStr", "Duuude6updated"}
-	//updateDoc[1] = SearchDocument{"Num64", int64(66)}
+	//updateDoc := make([]SearchField, 2)
+	//updateDoc[0] = SearchField{"TestStr", "Duuude6updated"}
+	//updateDoc[1] = SearchField{"Num64", int64(66)}
 	//fmt.Println("callig query")
 	//err = UpdateOne("data", query[:], updateDoc[:])
 

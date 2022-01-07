@@ -82,7 +82,7 @@ func insertMany(collection_name string, doc_array interface{}) error {
 //finds first document by searching the fieldname for given value
 //panics on bad collection name
 //returns document, or error if no matches found
-func findOne(collection_name string, search_arr []SearchDocument) (interface{}, error) {
+func findOne(collection_name string, search_arr []SearchField) (interface{}, error) {
 	reader, f := openCollection(collection_name)
 	defer f.Close()
 	var err error
@@ -135,7 +135,7 @@ func findOne(collection_name string, search_arr []SearchDocument) (interface{}, 
 }
 
 //this func compares the value of a search object to a document field
-func CompareValues(searchObj *SearchDocument, bsonDoc *reflect.Value) bool {
+func CompareValues(searchObj *SearchField, bsonDoc *reflect.Value) bool {
 	matches := false
 	var err error
 
@@ -146,12 +146,74 @@ func CompareValues(searchObj *SearchDocument, bsonDoc *reflect.Value) bool {
 	case "neq":
 		matches = bsonDoc.FieldByName(searchObj.FieldName).Interface() != searchObj.FieldValue
 	case "gt":
-		//check if values are integers before comparing.
-		//if reflect.ValueOf(searchObj.FieldValue).Kind() == reflect.String && bsonDoc.FieldByName(searchObj.FieldName).Kind() == reflect.String {
-		//matches = bsonDoc.FieldByName(searchObj.FieldName).Interface() == searchObj.FieldValue
+		// have to check type and type cast before comparing
+		if reflect.ValueOf(searchObj.FieldValue).Kind() == reflect.Int64 && bsonDoc.FieldByName(searchObj.FieldName).Kind() == reflect.Int64 {
+			matches = searchObj.FieldValue.(int64) < bsonDoc.FieldByName(searchObj.FieldName).Interface().(int64)
+
+		} else if reflect.ValueOf(searchObj.FieldValue).Kind() == reflect.Int32 && bsonDoc.FieldByName(searchObj.FieldName).Kind() == reflect.Int32 {
+			matches = searchObj.FieldValue.(int32) < bsonDoc.FieldByName(searchObj.FieldName).Interface().(int32)
+
+		} else if reflect.ValueOf(searchObj.FieldValue).Kind() == reflect.Uint64 && bsonDoc.FieldByName(searchObj.FieldName).Kind() == reflect.Uint64 {
+			matches = searchObj.FieldValue.(uint64) < bsonDoc.FieldByName(searchObj.FieldName).Interface().(uint64)
+
+		} else if reflect.ValueOf(searchObj.FieldValue).Kind() == reflect.Float64 && bsonDoc.FieldByName(searchObj.FieldName).Kind() == reflect.Float64 {
+			matches = searchObj.FieldValue.(float64) < bsonDoc.FieldByName(searchObj.FieldName).Interface().(float64)
+
+		} else if reflect.ValueOf(searchObj.FieldValue).Kind() == reflect.String && bsonDoc.FieldByName(searchObj.FieldName).Kind() == reflect.String {
+			matches = searchObj.FieldValue.(string) < bsonDoc.FieldByName(searchObj.FieldName).Interface().(string)
+		}
+
 	case "lt":
+		// have to check type and type cast before comparing
+		if reflect.ValueOf(searchObj.FieldValue).Kind() == reflect.Int64 && bsonDoc.FieldByName(searchObj.FieldName).Kind() == reflect.Int64 {
+			matches = searchObj.FieldValue.(int64) > bsonDoc.FieldByName(searchObj.FieldName).Interface().(int64)
+
+		} else if reflect.ValueOf(searchObj.FieldValue).Kind() == reflect.Int32 && bsonDoc.FieldByName(searchObj.FieldName).Kind() == reflect.Int32 {
+			matches = searchObj.FieldValue.(int32) > bsonDoc.FieldByName(searchObj.FieldName).Interface().(int32)
+
+		} else if reflect.ValueOf(searchObj.FieldValue).Kind() == reflect.Uint64 && bsonDoc.FieldByName(searchObj.FieldName).Kind() == reflect.Uint64 {
+			matches = searchObj.FieldValue.(uint64) > bsonDoc.FieldByName(searchObj.FieldName).Interface().(uint64)
+
+		} else if reflect.ValueOf(searchObj.FieldValue).Kind() == reflect.Float64 && bsonDoc.FieldByName(searchObj.FieldName).Kind() == reflect.Float64 {
+			matches = searchObj.FieldValue.(float64) > bsonDoc.FieldByName(searchObj.FieldName).Interface().(float64)
+
+		} else if reflect.ValueOf(searchObj.FieldValue).Kind() == reflect.String && bsonDoc.FieldByName(searchObj.FieldName).Kind() == reflect.String {
+			matches = searchObj.FieldValue.(string) > bsonDoc.FieldByName(searchObj.FieldName).Interface().(string)
+		}
 	case "gte":
+		// have to check type and type cast before comparing
+		if reflect.ValueOf(searchObj.FieldValue).Kind() == reflect.Int64 && bsonDoc.FieldByName(searchObj.FieldName).Kind() == reflect.Int64 {
+			matches = searchObj.FieldValue.(int64) <= bsonDoc.FieldByName(searchObj.FieldName).Interface().(int64)
+
+		} else if reflect.ValueOf(searchObj.FieldValue).Kind() == reflect.Int32 && bsonDoc.FieldByName(searchObj.FieldName).Kind() == reflect.Int32 {
+			matches = searchObj.FieldValue.(int32) <= bsonDoc.FieldByName(searchObj.FieldName).Interface().(int32)
+
+		} else if reflect.ValueOf(searchObj.FieldValue).Kind() == reflect.Uint64 && bsonDoc.FieldByName(searchObj.FieldName).Kind() == reflect.Uint64 {
+			matches = searchObj.FieldValue.(uint64) <= bsonDoc.FieldByName(searchObj.FieldName).Interface().(uint64)
+
+		} else if reflect.ValueOf(searchObj.FieldValue).Kind() == reflect.Float64 && bsonDoc.FieldByName(searchObj.FieldName).Kind() == reflect.Float64 {
+			matches = searchObj.FieldValue.(float64) <= bsonDoc.FieldByName(searchObj.FieldName).Interface().(float64)
+
+		} else if reflect.ValueOf(searchObj.FieldValue).Kind() == reflect.String && bsonDoc.FieldByName(searchObj.FieldName).Kind() == reflect.String {
+			matches = searchObj.FieldValue.(string) <= bsonDoc.FieldByName(searchObj.FieldName).Interface().(string)
+		}
 	case "lte":
+		// have to check type and type cast before comparing
+		if reflect.ValueOf(searchObj.FieldValue).Kind() == reflect.Int64 && bsonDoc.FieldByName(searchObj.FieldName).Kind() == reflect.Int64 {
+			matches = searchObj.FieldValue.(int64) >= bsonDoc.FieldByName(searchObj.FieldName).Interface().(int64)
+
+		} else if reflect.ValueOf(searchObj.FieldValue).Kind() == reflect.Int32 && bsonDoc.FieldByName(searchObj.FieldName).Kind() == reflect.Int32 {
+			matches = searchObj.FieldValue.(int32) >= bsonDoc.FieldByName(searchObj.FieldName).Interface().(int32)
+
+		} else if reflect.ValueOf(searchObj.FieldValue).Kind() == reflect.Uint64 && bsonDoc.FieldByName(searchObj.FieldName).Kind() == reflect.Uint64 {
+			matches = searchObj.FieldValue.(uint64) >= bsonDoc.FieldByName(searchObj.FieldName).Interface().(uint64)
+
+		} else if reflect.ValueOf(searchObj.FieldValue).Kind() == reflect.Float64 && bsonDoc.FieldByName(searchObj.FieldName).Kind() == reflect.Float64 {
+			matches = searchObj.FieldValue.(float64) >= bsonDoc.FieldByName(searchObj.FieldName).Interface().(float64)
+
+		} else if reflect.ValueOf(searchObj.FieldValue).Kind() == reflect.String && bsonDoc.FieldByName(searchObj.FieldName).Kind() == reflect.String {
+			matches = searchObj.FieldValue.(string) >= bsonDoc.FieldByName(searchObj.FieldName).Interface().(string)
+		}
 	case "rgx":
 		// if the field is a string, use regex
 		if reflect.ValueOf(searchObj.FieldValue).Kind() == reflect.String && bsonDoc.FieldByName(searchObj.FieldName).Kind() == reflect.String {
@@ -166,7 +228,7 @@ func CompareValues(searchObj *SearchDocument, bsonDoc *reflect.Value) bool {
 //finds all documents by searching the fieldname for given value
 //panics on bad collection name
 //returns documents, or zero documents if none found
-func findMany(collection_name string, search_arr []SearchDocument) ([]interface{}, error) {
+func findMany(collection_name string, search_arr []SearchField) ([]interface{}, error) {
 	reader, f := openCollection(collection_name)
 	defer f.Close()
 
@@ -223,7 +285,7 @@ func findMany(collection_name string, search_arr []SearchDocument) ([]interface{
 
 //counts all documents with given query
 //returns -1 and error if an error occurs
-func FindCount(collection_name string, search_arr []SearchDocument) (int64, error) {
+func FindCount(collection_name string, search_arr []SearchField) (int64, error) {
 	reader, f := openCollection(collection_name)
 	defer f.Close()
 
@@ -280,7 +342,7 @@ func FindCount(collection_name string, search_arr []SearchDocument) (int64, erro
 	}
 }
 
-func UpdateOne(collection_name string, search_arr []SearchDocument, update_document_fields []SearchDocument) error {
+func UpdateOne(collection_name string, search_arr []SearchField, update_document_fields []SearchField) error {
 	reader, f := openCollection(collection_name)
 	defer f.Close()
 	var err error
@@ -350,7 +412,7 @@ func UpdateOne(collection_name string, search_arr []SearchDocument, update_docum
 	return err
 }
 
-func UpdateMany(collection_name string, search_arr []SearchDocument, update_document_fields []SearchDocument) error {
+func UpdateMany(collection_name string, search_arr []SearchField, update_document_fields []SearchField) error {
 	reader, f := openCollection(collection_name)
 	defer f.Close()
 	var err error
@@ -443,7 +505,7 @@ func UpdateMany(collection_name string, search_arr []SearchDocument, update_docu
 	return err
 }
 
-func DeleteOne(collection_name string, search_arr []SearchDocument) error {
+func DeleteOne(collection_name string, search_arr []SearchField) error {
 	reader, f := openCollection(collection_name)
 	defer f.Close()
 	var err error
@@ -514,7 +576,7 @@ func DeleteOne(collection_name string, search_arr []SearchDocument) error {
 	return err
 }
 
-func DeleteMany(collection_name string, search_arr []SearchDocument) error {
+func DeleteMany(collection_name string, search_arr []SearchField) error {
 	reader, f := openCollection(collection_name)
 	defer f.Close()
 	var err error
