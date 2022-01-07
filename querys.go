@@ -121,14 +121,7 @@ func findOne(collection_name string, search_arr []SearchDocument) (interface{}, 
 			//check all fields, must match all of them
 			for _, srch_obj := range search_arr {
 				// if the field is a string, use regex
-				if reflect.ValueOf(srch_obj.FieldValue).Kind() == reflect.String && doc_val.FieldByName(srch_obj.FieldName).Kind() == reflect.String {
-					found, err = regexp.MatchString(srch_obj.FieldValue.(string), doc_val.FieldByName(srch_obj.FieldName).Interface().(string))
-					if err != nil {
-						return nil, err
-					}
-				} else {
-					found = doc_val.FieldByName(srch_obj.FieldName).Interface() == srch_obj.FieldValue
-				}
+				found = CompareValues(&srch_obj, &doc_val)
 
 				//if one doesn't match, break
 				if !found {
@@ -139,6 +132,35 @@ func findOne(collection_name string, search_arr []SearchDocument) (interface{}, 
 	}
 
 	return doc_val.Interface(), err
+}
+
+//this func compares the value of a search object to a document field
+func CompareValues(searchObj *SearchDocument, bsonDoc *reflect.Value) bool {
+	matches := false
+	var err error
+
+	switch searchObj.CompareType {
+	//eq neq gt lt gte lte rgx
+	case "eq":
+		matches = bsonDoc.FieldByName(searchObj.FieldName).Interface() == searchObj.FieldValue
+	case "neq":
+		matches = bsonDoc.FieldByName(searchObj.FieldName).Interface() != searchObj.FieldValue
+	case "gt":
+		//check if values are integers before comparing.
+		//if reflect.ValueOf(searchObj.FieldValue).Kind() == reflect.String && bsonDoc.FieldByName(searchObj.FieldName).Kind() == reflect.String {
+		//matches = bsonDoc.FieldByName(searchObj.FieldName).Interface() == searchObj.FieldValue
+	case "lt":
+	case "gte":
+	case "lte":
+	case "rgx":
+		// if the field is a string, use regex
+		if reflect.ValueOf(searchObj.FieldValue).Kind() == reflect.String && bsonDoc.FieldByName(searchObj.FieldName).Kind() == reflect.String {
+			matches, err = regexp.MatchString(searchObj.FieldValue.(string), bsonDoc.FieldByName(searchObj.FieldName).Interface().(string))
+			check(err)
+		}
+	}
+
+	return matches
 }
 
 //finds all documents by searching the fieldname for given value
@@ -184,16 +206,7 @@ func findMany(collection_name string, search_arr []SearchDocument) ([]interface{
 
 			//check all fields, must match all of them
 			for _, srch_obj := range search_arr {
-				// if the field is a string, use regex
-				if reflect.ValueOf(srch_obj.FieldValue).Kind() == reflect.String && doc_val.FieldByName(srch_obj.FieldName).Kind() == reflect.String {
-					found, err = regexp.MatchString(srch_obj.FieldValue.(string), doc_val.FieldByName(srch_obj.FieldName).Interface().(string))
-					if err != nil {
-						return nil, err
-					}
-				} else {
-					//found = doc_val.FieldByName(search_arr[0].FieldName).Interface() == reflect.ValueOf(search_arr[0].FieldValue).Interface()
-					found = doc_val.FieldByName(srch_obj.FieldName).Interface() == srch_obj.FieldValue
-				}
+				found = CompareValues(&srch_obj, &doc_val)
 
 				//if one doesn't match, break
 				if !found {
@@ -253,16 +266,7 @@ func FindCount(collection_name string, search_arr []SearchDocument) (int64, erro
 
 			//check all fields, must match all of them
 			for _, srch_obj := range search_arr {
-				// if the field is a string, use regex
-				if reflect.ValueOf(srch_obj.FieldValue).Kind() == reflect.String && doc_val.FieldByName(srch_obj.FieldName).Kind() == reflect.String {
-					found, err = regexp.MatchString(srch_obj.FieldValue.(string), doc_val.FieldByName(srch_obj.FieldName).Interface().(string))
-					if err != nil {
-						return -1, err
-					}
-				} else {
-					//found = doc_val.FieldByName(search_arr[0].FieldName).Interface() == reflect.ValueOf(search_arr[0].FieldValue).Interface()
-					found = doc_val.FieldByName(srch_obj.FieldName).Interface() == srch_obj.FieldValue
-				}
+				found = CompareValues(&srch_obj, &doc_val)
 
 				//if one doesn't match, break
 				if !found {
@@ -272,7 +276,6 @@ func FindCount(collection_name string, search_arr []SearchDocument) (int64, erro
 			if found {
 				count++
 			}
-
 		}
 	}
 }
@@ -317,15 +320,7 @@ func UpdateOne(collection_name string, search_arr []SearchDocument, update_docum
 		if doc_val.FieldByName(search_arr[0].FieldName).IsValid() {
 			//check all fields, must match all of them
 			for _, srch_obj := range search_arr {
-				// if the field is a string, use regex
-				if reflect.ValueOf(srch_obj.FieldValue).Kind() == reflect.String && doc_val.FieldByName(srch_obj.FieldName).Kind() == reflect.String {
-					found, err = regexp.MatchString(srch_obj.FieldValue.(string), doc_val.FieldByName(srch_obj.FieldName).Interface().(string))
-					if err != nil {
-						return err
-					}
-				} else {
-					found = doc_val.FieldByName(srch_obj.FieldName).Interface() == srch_obj.FieldValue
-				}
+				found = CompareValues(&srch_obj, &doc_val)
 
 				//if one doesn't match, break
 				if !found {
@@ -402,15 +397,7 @@ func UpdateMany(collection_name string, search_arr []SearchDocument, update_docu
 
 			//check all fields, must match all of them
 			for _, srch_obj := range search_arr {
-				// if the field is a string, use regex
-				if reflect.ValueOf(srch_obj.FieldValue).Kind() == reflect.String && doc_val.FieldByName(srch_obj.FieldName).Kind() == reflect.String {
-					found, err = regexp.MatchString(srch_obj.FieldValue.(string), doc_val.FieldByName(srch_obj.FieldName).Interface().(string))
-					if err != nil {
-						return err
-					}
-				} else {
-					found = doc_val.FieldByName(srch_obj.FieldName).Interface() == srch_obj.FieldValue
-				}
+				found = CompareValues(&srch_obj, &doc_val)
 
 				//if one doesn't match, break
 				if !found {

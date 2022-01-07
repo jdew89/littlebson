@@ -91,15 +91,12 @@ func runTest() {
 	start = time.Now()
 	//fmt.Printf("%+v\n", something)
 
-	query := make([]SearchDocument, 1)
+	query := make([]SearchDocument, 2)
 	//query[0] = SearchDocument{"TestStr", "(?i)DuUude"}
 	query[0] = SearchDocument{"TestStr", "Duuude[6,7,8]", "rgx"}
-	//query[1] = SearchDocument{"Num64", 6}
+	//query[1] = SearchDocument{"TestStr", "Duuude6", "eq"}
+	query[1] = SearchDocument{"Num64", 6, "neq"}
 	//query[2] = SearchDocument{"Num32", int32(106)}
-	//query[0] = SearchDocument{"TestStr", "Duuude"}
-	//query[1] = SearchDocument{"Num64", -100}
-	//query[2] = SearchDocument{"Num32", int32(100)}
-	//doc, err := findOne("data", query)
 
 	doc, err := findOne("data", query)
 	if err == nil {
