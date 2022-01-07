@@ -116,17 +116,18 @@ func findOne(collection_name string, search_arr []SearchField) (interface{}, err
 
 		//doc_val := reflect.ValueOf(doc)
 
-		//if the field does not exist, ignore it
-		if doc_val.FieldByName(search_arr[0].FieldName).IsValid() {
-			//check all fields, must match all of them
-			for _, srch_obj := range search_arr {
-				// if the field is a string, use regex
-				found = CompareValues(&srch_obj, &doc_val)
+		//check all fields, must match all of them
+		for _, srch_obj := range search_arr {
+			//if the field does not exist, ignore it
+			if doc_val.FieldByName(srch_obj.FieldName).IsValid() {
+				break
+			}
 
-				//if one doesn't match, break
-				if !found {
-					break
-				}
+			found = CompareValues(&srch_obj, &doc_val)
+
+			//if one doesn't match, break
+			if !found {
+				break
 			}
 		}
 	}
@@ -262,24 +263,26 @@ func findMany(collection_name string, search_arr []SearchField) ([]interface{}, 
 			}
 		}
 
-		//if the field does not exist, ignore it
-		if doc_val.FieldByName(search_arr[0].FieldName).IsValid() {
-			found := false
+		found := false
 
-			//check all fields, must match all of them
-			for _, srch_obj := range search_arr {
-				found = CompareValues(&srch_obj, &doc_val)
-
-				//if one doesn't match, break
-				if !found {
-					break
-				}
-			}
-			if found {
-				found_docs = append(found_docs, doc_val.Interface())
+		//check all fields, must match all of them
+		for _, srch_obj := range search_arr {
+			//if the field does not exist, ignore it
+			if doc_val.FieldByName(srch_obj.FieldName).IsValid() {
+				break
 			}
 
+			found = CompareValues(&srch_obj, &doc_val)
+
+			//if one doesn't match, break
+			if !found {
+				break
+			}
 		}
+		if found {
+			found_docs = append(found_docs, doc_val.Interface())
+		}
+
 	}
 }
 
@@ -322,23 +325,26 @@ func FindCount(collection_name string, search_arr []SearchField) (int64, error) 
 			}
 		}
 
-		//if the field does not exist, ignore it
-		if doc_val.FieldByName(search_arr[0].FieldName).IsValid() {
-			found := false
+		found := false
 
-			//check all fields, must match all of them
-			for _, srch_obj := range search_arr {
-				found = CompareValues(&srch_obj, &doc_val)
-
-				//if one doesn't match, break
-				if !found {
-					break
-				}
+		//check all fields, must match all of them
+		for _, srch_obj := range search_arr {
+			//if the field does not exist, ignore it
+			if doc_val.FieldByName(srch_obj.FieldName).IsValid() {
+				break
 			}
-			if found {
-				count++
+
+			found = CompareValues(&srch_obj, &doc_val)
+
+			//if one doesn't match, break
+			if !found {
+				break
 			}
 		}
+		if found {
+			count++
+		}
+
 	}
 }
 
@@ -378,18 +384,21 @@ func UpdateOne(collection_name string, search_arr []SearchField, update_document
 			return err
 		}
 
-		//if the field does not exist, ignore it
-		if doc_val.FieldByName(search_arr[0].FieldName).IsValid() {
-			//check all fields, must match all of them
-			for _, srch_obj := range search_arr {
-				found = CompareValues(&srch_obj, &doc_val)
+		//check all fields, must match all of them
+		for _, srch_obj := range search_arr {
+			//if the field does not exist, ignore it
+			if doc_val.FieldByName(srch_obj.FieldName).IsValid() {
+				break
+			}
 
-				//if one doesn't match, break
-				if !found {
-					break
-				}
+			found = CompareValues(&srch_obj, &doc_val)
+
+			//if one doesn't match, break
+			if !found {
+				break
 			}
 		}
+
 		if !found {
 			//move pointer to next document if not found
 			prev_doc_pointer = curr_doc_pointer
@@ -452,24 +461,26 @@ func UpdateMany(collection_name string, search_arr []SearchField, update_documen
 			}
 		}
 
-		//if the field does not exist, ignore it
-		//TODO THIS SHOULD PROBABLY BE IN THE LOOP
-		if doc_val.FieldByName(search_arr[0].FieldName).IsValid() {
-			found := false
+		found := false
 
-			//check all fields, must match all of them
-			for _, srch_obj := range search_arr {
-				found = CompareValues(&srch_obj, &doc_val)
-
-				//if one doesn't match, break
-				if !found {
-					break
-				}
+		//check all fields, must match all of them
+		for _, srch_obj := range search_arr {
+			//if the field does not exist, ignore it
+			if doc_val.FieldByName(srch_obj.FieldName).IsValid() {
+				break
 			}
-			if found {
-				found_docs[int(prev_doc_pointer)] = doc_val
+
+			found = CompareValues(&srch_obj, &doc_val)
+
+			//if one doesn't match, break
+			if !found {
+				break
 			}
 		}
+		if found {
+			found_docs[int(prev_doc_pointer)] = doc_val
+		}
+
 		prev_doc_pointer = curr_doc_pointer
 	}
 
@@ -541,26 +552,21 @@ func DeleteOne(collection_name string, search_arr []SearchField) error {
 			return err
 		}
 
-		//if the field does not exist, ignore it
-		if doc_val.FieldByName(search_arr[0].FieldName).IsValid() {
-			//check all fields, must match all of them
-			for _, srch_obj := range search_arr {
-				// if the field is a string, use regex
-				if reflect.ValueOf(srch_obj.FieldValue).Kind() == reflect.String && doc_val.FieldByName(srch_obj.FieldName).Kind() == reflect.String {
-					found, err = regexp.MatchString(srch_obj.FieldValue.(string), doc_val.FieldByName(srch_obj.FieldName).Interface().(string))
-					if err != nil {
-						return err
-					}
-				} else {
-					found = doc_val.FieldByName(srch_obj.FieldName).Interface() == srch_obj.FieldValue
-				}
+		//check all fields, must match all of them
+		for _, srch_obj := range search_arr {
+			//if the field does not exist, ignore it
+			if doc_val.FieldByName(srch_obj.FieldName).IsValid() {
+				break
+			}
 
-				//if one doesn't match, break
-				if !found {
-					break
-				}
+			found = CompareValues(&srch_obj, &doc_val)
+
+			//if one doesn't match, break
+			if !found {
+				break
 			}
 		}
+
 		if !found {
 			//move pointer to next document if not found
 			prev_doc_pointer = curr_doc_pointer
@@ -616,32 +622,26 @@ func DeleteMany(collection_name string, search_arr []SearchField) error {
 			}
 		}
 
-		//if the field does not exist, ignore it
-		//TODO THIS SHOULD PROBABLY BE IN THE LOOP
-		if doc_val.FieldByName(search_arr[0].FieldName).IsValid() {
-			found := false
+		found := false
 
-			//check all fields, must match all of them
-			for _, srch_obj := range search_arr {
-				// if the field is a string, use regex
-				if reflect.ValueOf(srch_obj.FieldValue).Kind() == reflect.String && doc_val.FieldByName(srch_obj.FieldName).Kind() == reflect.String {
-					found, err = regexp.MatchString(srch_obj.FieldValue.(string), doc_val.FieldByName(srch_obj.FieldName).Interface().(string))
-					if err != nil {
-						return err
-					}
-				} else {
-					found = doc_val.FieldByName(srch_obj.FieldName).Interface() == srch_obj.FieldValue
-				}
-
-				//if one doesn't match, break
-				if !found {
-					break
-				}
+		//check all fields, must match all of them
+		for _, srch_obj := range search_arr {
+			//if the field does not exist, ignore it
+			if doc_val.FieldByName(srch_obj.FieldName).IsValid() {
+				break
 			}
-			if found {
-				found_docs[int(prev_doc_pointer)] = doc_val
+
+			found = CompareValues(&srch_obj, &doc_val)
+
+			//if one doesn't match, break
+			if !found {
+				break
 			}
 		}
+		if found {
+			found_docs[int(prev_doc_pointer)] = doc_val
+		}
+
 		prev_doc_pointer = curr_doc_pointer
 	}
 

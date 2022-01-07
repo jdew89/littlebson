@@ -94,8 +94,9 @@ func runTest() {
 	query := make([]SearchField, 2)
 	//query[0] = SearchField{"TestStr", "(?i)DuUude"}
 	query[0] = SearchField{"TestStr", "Duuude[6,7,8]", "rgx"}
-	query[0] = SearchField{"TestStr", "Duuude6", "gt"}
+	query[0] = SearchField{"TestStr", "Duuude6", "ne"}
 	query[1] = SearchField{"Num64", 8, "lt"}
+	query[1] = SearchField{"Nzzz", 8, "ne"}
 	//query[2] = SearchField{"Num32", int32(106)}
 
 	doc, err := findOne("data", query)
