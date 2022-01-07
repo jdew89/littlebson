@@ -108,6 +108,7 @@ func findOne(collection_name string, search_arr []SearchDocument) (interface{}, 
 	found := false
 	for !found {
 		doc_val, _, err = readOneDocument(reader, 0)
+
 		if err != nil {
 			fmt.Println("err finding", err)
 			return nil, err
@@ -146,9 +147,8 @@ func findOne(collection_name string, search_arr []SearchDocument) (interface{}, 
 func findMany(collection_name string, search_arr []SearchDocument) ([]interface{}, error) {
 	reader, f := openCollection(collection_name)
 	defer f.Close()
-	var err error
 
-	fmt.Println("Finding...", search_arr)
+	fmt.Println("Finding Many...", search_arr)
 
 	for i, obj := range search_arr {
 		//this swtich converts ints to int64's
@@ -169,9 +169,13 @@ func findMany(collection_name string, search_arr []SearchDocument) ([]interface{
 	// loops until it reaches EOF
 	for {
 		doc_val, _, err := readOneDocument(reader, 0)
+
 		if err != nil {
-			//fmt.Println("End of file.", err)
-			return found_docs[:], err
+			if err == io.EOF { //if EOF return found docs
+				return found_docs[:], nil
+			} else { //if some other error, return it
+				return nil, err
+			}
 		}
 
 		//if the field does not exist, ignore it
@@ -202,8 +206,6 @@ func findMany(collection_name string, search_arr []SearchDocument) ([]interface{
 
 		}
 	}
-
-	return found_docs[:], err
 }
 
 //counts all documents with given query
@@ -211,7 +213,6 @@ func findMany(collection_name string, search_arr []SearchDocument) ([]interface{
 func FindCount(collection_name string, search_arr []SearchDocument) (int64, error) {
 	reader, f := openCollection(collection_name)
 	defer f.Close()
-	var err error
 
 	var count int64 = 0
 
@@ -236,6 +237,14 @@ func FindCount(collection_name string, search_arr []SearchDocument) (int64, erro
 		if err != nil {
 			//fmt.Println("End of file.", err)
 			return count, err
+		}
+		if err != nil {
+			if err == io.EOF { //return count if EOF
+				return count, nil
+
+			} else { //if some other error, return it
+				return -1, err
+			}
 		}
 
 		//if the field does not exist, ignore it
@@ -266,8 +275,6 @@ func FindCount(collection_name string, search_arr []SearchDocument) (int64, erro
 
 		}
 	}
-
-	return count, err
 }
 
 func UpdateOne(collection_name string, search_arr []SearchDocument, update_document_fields []SearchDocument) error {
@@ -275,7 +282,7 @@ func UpdateOne(collection_name string, search_arr []SearchDocument, update_docum
 	defer f.Close()
 	var err error
 
-	fmt.Println("Finding...", search_arr)
+	fmt.Println("Counting...", search_arr)
 
 	for i, obj := range search_arr {
 		//this swtich converts ints to int64's

@@ -44,31 +44,13 @@ type Athing struct {
 	Num32   int32
 	Uint64  uint64
 	Boolean bool
-	BlahArr []string
 	Float   float64
 }
 
-type Small struct {
-	TestStr string
-	Num32   int32
-	Boolean bool
-}
-
-type Blarg struct {
-	TestStr  string
-	Num64    int64
-	Num32    int32
-	Uint64   uint64
-	Boolean  bool
-	Float    float64
-	Binary   []byte
-	Array    []interface{}
-	MyStruct interface{}
-}
-
 type SearchDocument struct {
-	FieldName  string
-	FieldValue interface{}
+	FieldName   string
+	FieldValue  interface{}
+	CompareType string //eq neq gt lt gte lte rgx
 }
 
 type NullValue interface {
@@ -90,40 +72,12 @@ func main() {
 }
 
 func runTest() {
-	type myfloat float64
-	afloat := myfloat(5.5)
-	myarr := make([]interface{}, 7)
-	myarr[0] = genLilBsonID()
-	myarr[1] = "IT WORKS"
-	myarr[2] = int32(4321)
-	myarr[3] = afloat
-	myarr[4] = true
-	myarr[5] = []int64{9, 8, 7}
-	myarr[6] = Small{"small struct", int32(32), true}
-
-	//return
-	mystrarr := make([]string, 2)
-	mystrarr[0] = "hello"
-	mystrarr[1] = "world"
-
-	type tester struct {
-		Array []interface{}
-	}
-
-	something := Athing{genLilBsonID(), "Duuude", -100, int32(100), 32134, true, mystrarr, 12.34}
-	//something := tester{myarr[:]}
-	//something := Small{"small struct", int32(32), true}
-	//something := Blarg{"Duuude", -100, 100, 1234, false, 56.91, mybytes[:], myarr[:], Blarg{"Duuude", -100, 100, 1234, false, 56.91, mybytes[:], myarr[:], Small{}}}
-	//insertOne("data", myarr[:])
-
-	//insertOne("data", something)
-	//var something Blarg
 	fmt.Println("building lbson")
 	start := time.Now()
 
 	testarr := make([]Athing, 12)
 	for i := 0; i < len(testarr); i++ {
-		something = Athing{genLilBsonID(), "Duuude" + fmt.Sprint(i), int64(i), int32(100) + int32(i), 1000 + uint64(i), false, mystrarr, 56.91 + float64(i)}
+		something := Athing{genLilBsonID(), "Duuude" + fmt.Sprint(i), int64(i), int32(100) + int32(i), 1000 + uint64(i), false, 50.91 + float64(i)}
 		testarr[i] = something
 	}
 
@@ -139,7 +93,7 @@ func runTest() {
 
 	query := make([]SearchDocument, 1)
 	//query[0] = SearchDocument{"TestStr", "(?i)DuUude"}
-	query[0] = SearchDocument{"TestStr", "Duuude[6,7,8]"}
+	query[0] = SearchDocument{"TestStr", "Duuude[6,7,8]", "rgx"}
 	//query[1] = SearchDocument{"Num64", 6}
 	//query[2] = SearchDocument{"Num32", int32(106)}
 	//query[0] = SearchDocument{"TestStr", "Duuude"}
@@ -147,21 +101,22 @@ func runTest() {
 	//query[2] = SearchDocument{"Num32", int32(100)}
 	//doc, err := findOne("data", query)
 
-	/*doc2, err := findOne("data", query)
+	doc, err := findOne("data", query)
 	if err == nil {
 		//val := reflect.ValueOf(doc[0])
-		fmt.Println("found one:", doc2)
+		fmt.Println("found one:", doc)
 
 	} else {
 		fmt.Println("Not found.")
 	}
-	doc, err := findMany("data", query)
-	if err == nil && len(doc) > 0 {
+	docs, err := findMany("data", query)
+	if err == nil && len(docs) > 0 {
 		//val := reflect.ValueOf(doc[0])
-		fmt.Println(doc[5])
+		fmt.Println("found: ", len(docs))
+		fmt.Println(docs[0])
 	} else {
 		fmt.Println("Not found.")
-	}*/
+	}
 
 	count, err := FindCount("data", query)
 	fmt.Println("found docs count:", count)
@@ -169,14 +124,14 @@ func runTest() {
 	duration = time.Since(start)
 	fmt.Println("lbson read time:", duration.Milliseconds())
 
-	updateDoc := make([]SearchDocument, 2)
-	updateDoc[0] = SearchDocument{"TestStr", "Duuude6updated"}
-	updateDoc[1] = SearchDocument{"Num64", int64(66)}
-	fmt.Println("callig query")
+	//updateDoc := make([]SearchDocument, 2)
+	//updateDoc[0] = SearchDocument{"TestStr", "Duuude6updated"}
+	//updateDoc[1] = SearchDocument{"Num64", int64(66)}
+	//fmt.Println("callig query")
 	//err = UpdateOne("data", query[:], updateDoc[:])
 
 	//err = DeleteOne("data", query[:])
-	err = DeleteMany("data", query[:])
+	//err = DeleteMany("data", query[:])
 	//err = UpdateMany("data", query[:], updateDoc[:])
 }
 
