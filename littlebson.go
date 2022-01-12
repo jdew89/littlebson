@@ -72,6 +72,7 @@ func main() {
 }
 
 func runTest() {
+
 	fmt.Println("building lbson")
 	start := time.Now()
 
@@ -91,12 +92,12 @@ func runTest() {
 	start = time.Now()
 	//fmt.Printf("%+v\n", something)
 
-	query := make([]SearchField, 2)
+	query := make([]SearchField, 1)
 	//query[0] = SearchField{"TestStr", "(?i)DuUude"}
 	query[0] = SearchField{"TestStr", "Duuude[6,7,8]", "rgx"}
-	query[0] = SearchField{"TestStr", "Duuude6", "ne"}
-	query[1] = SearchField{"Num64", 8, "lt"}
-	query[1] = SearchField{"Nzzz", 8, "ne"}
+	query[0] = SearchField{"TestStr", "Duuude6", "eq"}
+	//query[1] = SearchField{"Num64", 8, "lt"}
+	//query[1] = SearchField{"Nzzz", 8, "ne"}
 	//query[2] = SearchField{"Num32", int32(106)}
 
 	doc, err := findOne("data", query)
@@ -128,7 +129,10 @@ func runTest() {
 	//fmt.Println("callig query")
 	//err = UpdateOne("data", query[:], updateDoc[:])
 
-	//err = DeleteOne("data", query[:])
+	err = DeleteOne("data", query[:])
+	if err == nil {
+		fmt.Println("deleted")
+	}
 	//err = DeleteMany("data", query[:])
 	//err = UpdateMany("data", query[:], updateDoc[:])
 }
@@ -201,7 +205,8 @@ func getMachineIdBits() uint64 {
 
 func genRandBits() uint64 {
 	var bits uint64 = 0
-
+	//wait until the next nano second to seed the random
+	time.Sleep(1 * time.Nanosecond)
 	rand_source := rand.NewSource(time.Now().UnixNano())
 	time_rand := rand.New(rand_source)
 	bits = time_rand.Uint64() & 0x0000000000001fff //keep 13 bits

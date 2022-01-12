@@ -114,15 +114,13 @@ func findOne(collection_name string, search_arr []SearchField) (interface{}, err
 			return nil, err
 		}
 
-		//doc_val := reflect.ValueOf(doc)
-
 		//check all fields, must match all of them
 		for _, srch_obj := range search_arr {
 			//if the field does not exist, ignore it
-			if doc_val.FieldByName(srch_obj.FieldName).IsValid() {
+			if !doc_val.FieldByName(srch_obj.FieldName).IsValid() {
 				break
 			}
-
+			fmt.Println("before compare")
 			found = CompareValues(&srch_obj, &doc_val)
 
 			//if one doesn't match, break
@@ -268,7 +266,7 @@ func findMany(collection_name string, search_arr []SearchField) ([]interface{}, 
 		//check all fields, must match all of them
 		for _, srch_obj := range search_arr {
 			//if the field does not exist, ignore it
-			if doc_val.FieldByName(srch_obj.FieldName).IsValid() {
+			if !doc_val.FieldByName(srch_obj.FieldName).IsValid() {
 				break
 			}
 
@@ -330,7 +328,7 @@ func FindCount(collection_name string, search_arr []SearchField) (int64, error) 
 		//check all fields, must match all of them
 		for _, srch_obj := range search_arr {
 			//if the field does not exist, ignore it
-			if doc_val.FieldByName(srch_obj.FieldName).IsValid() {
+			if !doc_val.FieldByName(srch_obj.FieldName).IsValid() {
 				break
 			}
 
@@ -387,7 +385,7 @@ func UpdateOne(collection_name string, search_arr []SearchField, update_document
 		//check all fields, must match all of them
 		for _, srch_obj := range search_arr {
 			//if the field does not exist, ignore it
-			if doc_val.FieldByName(srch_obj.FieldName).IsValid() {
+			if !doc_val.FieldByName(srch_obj.FieldName).IsValid() {
 				break
 			}
 
@@ -466,7 +464,7 @@ func UpdateMany(collection_name string, search_arr []SearchField, update_documen
 		//check all fields, must match all of them
 		for _, srch_obj := range search_arr {
 			//if the field does not exist, ignore it
-			if doc_val.FieldByName(srch_obj.FieldName).IsValid() {
+			if !doc_val.FieldByName(srch_obj.FieldName).IsValid() {
 				break
 			}
 
@@ -555,7 +553,7 @@ func DeleteOne(collection_name string, search_arr []SearchField) error {
 		//check all fields, must match all of them
 		for _, srch_obj := range search_arr {
 			//if the field does not exist, ignore it
-			if doc_val.FieldByName(srch_obj.FieldName).IsValid() {
+			if !doc_val.FieldByName(srch_obj.FieldName).IsValid() {
 				break
 			}
 
@@ -627,7 +625,7 @@ func DeleteMany(collection_name string, search_arr []SearchField) error {
 		//check all fields, must match all of them
 		for _, srch_obj := range search_arr {
 			//if the field does not exist, ignore it
-			if doc_val.FieldByName(srch_obj.FieldName).IsValid() {
+			if !doc_val.FieldByName(srch_obj.FieldName).IsValid() {
 				break
 			}
 
