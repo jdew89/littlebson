@@ -1,19 +1,25 @@
 # Queries
 
-## Find One
-TODO: Add support for using comparisons, like -gt -lt -not
+Added support for using comparisons
 
-Searching strings always uses Regex.
-Specification found here:
-https://github.com/google/re2/wiki/Syntax
-https://pkg.go.dev/regexp/syntax#hdr-Syntax
+| Comparison | Meaning |
+|----|----|
+| -eq | Equals|
+| -neq | Not Equal|
+| -gt | Greater than|
+| -gte | Greater than or equal to|
+| -lt | Less than|
+| -lte | Less than or equal to|
+| -rgx | Regex - only for strings. Regex syntax found on [github](https://github.com/google/re2/wiki/Syntax ) and [pgk.go.dev](https://pkg.go.dev/regexp/syntax#hdr-Syntax)  
+|
+
+## Find One
+
+
+
 
 ## Find Many
 
-Searching strings always uses Regex.
-Specification found here:
-https://github.com/google/re2/wiki/Syntax
-https://pkg.go.dev/regexp/syntax#hdr-Syntax
 
 ## Insert One
 
@@ -23,10 +29,6 @@ https://pkg.go.dev/regexp/syntax#hdr-Syntax
 
 ## Update One
 
-Searching strings always uses Regex.
-Specification found here:
-https://github.com/google/re2/wiki/Syntax
-https://pkg.go.dev/regexp/syntax#hdr-Syntax
 
 ## Update Many
 
@@ -36,24 +38,11 @@ https://pkg.go.dev/regexp/syntax#hdr-Syntax
 ## Delete One
 
 
-Searching strings always uses Regex.
-Specification found here:
-https://github.com/google/re2/wiki/Syntax
-https://pkg.go.dev/regexp/syntax#hdr-Syntax
-
 ## Delete Many
 
-
-Searching strings always uses Regex.
-Specification found here:
-https://github.com/google/re2/wiki/Syntax
-https://pkg.go.dev/regexp/syntax#hdr-Syntax
 
 ## Count
 
 Works just like FindMany but only returns a count.
-Searching strings always uses Regex.
-Specification found here:
-https://github.com/google/re2/wiki/Syntax
-https://pkg.go.dev/regexp/syntax#hdr-Syntax
+
 
