@@ -277,7 +277,8 @@ func findMany(collection_name string, search_arr []SearchField) ([]interface{}, 
 				break
 			}
 		}
-		if found {
+		//if found or no search arr is provided, return all docs
+		if found || len(search_arr) == 0 {
 			found_docs = append(found_docs, doc_val.Interface())
 		}
 
@@ -339,7 +340,7 @@ func FindCount(collection_name string, search_arr []SearchField) (int64, error) 
 				break
 			}
 		}
-		if found {
+		if found || len(search_arr) == 0 {
 			count++
 		}
 
@@ -475,7 +476,7 @@ func UpdateMany(collection_name string, search_arr []SearchField, update_documen
 				break
 			}
 		}
-		if found {
+		if found || len(search_arr) == 0 {
 			found_docs[int(prev_doc_pointer)] = doc_val
 		}
 
@@ -636,7 +637,7 @@ func DeleteMany(collection_name string, search_arr []SearchField) error {
 				break
 			}
 		}
-		if found {
+		if found || len(search_arr) == 0 {
 			found_docs[int(prev_doc_pointer)] = doc_val
 		}
 

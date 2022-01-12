@@ -92,10 +92,10 @@ func runTest() {
 	start = time.Now()
 	//fmt.Printf("%+v\n", something)
 
-	query := make([]SearchField, 1)
+	query := make([]SearchField, 0)
 	//query[0] = SearchField{"TestStr", "(?i)DuUude"}
-	query[0] = SearchField{"TestStr", "Duuude[6,7,8]", "rgx"}
-	query[0] = SearchField{"TestStr", "Duuude6", "eq"}
+	//query[0] = SearchField{"TestStr", "Duuude[6,7,8]", "rgx"}
+	//query[0] = SearchField{"TestStr", "Duuude6", "eq"}
 	//query[1] = SearchField{"Num64", 8, "lt"}
 	//query[1] = SearchField{"Nzzz", 8, "ne"}
 	//query[2] = SearchField{"Num32", int32(106)}
