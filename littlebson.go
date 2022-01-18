@@ -72,6 +72,34 @@ func main() {
 }
 
 func runTest() {
+	/*
+		fmt.Println("Testing")
+
+		id := genLilBsonID()
+
+		type smallTestStruct struct {
+			MyInt64  int64
+			MyUint64 uint64
+			MyInt32  int32
+			MyFloat  float64
+		}
+		type testStruct struct {
+			Id        LilBsonID
+			HelloArr  []string
+			Binary    []byte
+			SubStruct smallTestStruct
+			Null      interface{}
+			True      bool
+		}
+
+		smallStruct := smallTestStruct{int64(-64), uint64(64), int32(-32), float64(64.64)}
+		stringArr := []string{"hello", "world"}
+		binaryArr := []byte{0x62, 0x69, 0x6E, 0x20, 0x61, 0x72, 0x72}
+		var myNull interface{}
+
+		initialStruct := testStruct{id, stringArr[:], binaryArr[:], smallStruct, myNull, true}
+		err := insertOne("test", initialStruct)
+	*/
 
 	fmt.Println("building lbson")
 	start := time.Now()
@@ -571,6 +599,8 @@ func readDocumentValue(main_doc_bytes []byte, p int32) (reflect.Value, int32) {
 
 //sets the value of the given field with the appropiate type
 func setDocumentFieldValue(document *reflect.Value, field_value interface{}, typebyte byte, field_num int) {
+	fmt.Println(field_value)
+	//fmt.Println("Can set: ", document.CanSet())
 	switch typebyte {
 	case FLOAT64_TYPE:
 		document.Field(field_num).SetFloat(field_value.(float64))
@@ -578,6 +608,9 @@ func setDocumentFieldValue(document *reflect.Value, field_value interface{}, typ
 		document.Field(field_num).SetString(field_value.(string))
 	case DOCUMENT_TYPE:
 		document.Field(field_num).Set(reflect.ValueOf(field_value))
+		this set function doesnt work
+		its trying to assign a struct with a structure to a struct with no structure
+		maybe edit the document field to accept the same fields as the field_value
 	case ARRAY_TYPE:
 		document.Field(field_num).Set(reflect.ValueOf(field_value))
 	case BINARY_TYPE:
