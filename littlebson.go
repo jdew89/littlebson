@@ -553,6 +553,7 @@ func readDocumentValue(main_doc_bytes []byte, p int32) (reflect.Value, int32) {
 	doc_map := make(map[int]store_values)
 
 	//start past the doc size bytes
+	//reads the bytes into a key-value map for created the reflect.struct fields
 	for i := int32(4); i < doc_len; {
 		thetypebyte := sub_doc_bytes[i]
 		//fmt.Println("byte type:", thetypebyte, " i: ", i, " fieldnum:", field_num)
@@ -579,8 +580,17 @@ func readDocumentValue(main_doc_bytes []byte, p int32) (reflect.Value, int32) {
 	struct_fields := make([]reflect.StructField, len(doc_map))
 	//add fields to struct
 	for k, doc := range doc_map {
-		structfield := initStructField(doc.FieldName, doc.FieldTypeByte)
-		struct_fields[k] = *structfield
+		if doc.FieldTypeByte == DOCUMENT_TYPE {
+			embeded_doc := doc.FieldValue
+			structfield := InitStructField(doc.FieldName, doc.FieldTypeByte, embeded_doc)
+
+			struct_fields[k] = *structfield
+		} else {
+			structfield := InitStructField(doc.FieldName, doc.FieldTypeByte, nil)
+
+			struct_fields[k] = *structfield
+		}
+
 	}
 
 	base_document := reflect.StructOf(struct_fields[:])
@@ -589,7 +599,7 @@ func readDocumentValue(main_doc_bytes []byte, p int32) (reflect.Value, int32) {
 
 	//add field values to struct
 	for key, doc := range doc_map {
-		setDocumentFieldValue(&document, doc.FieldValue, doc.FieldTypeByte, key)
+		SetDocumentFieldValue(&document, doc.FieldValue, doc.FieldTypeByte, key)
 	}
 
 	return document, doc_len
@@ -598,9 +608,8 @@ func readDocumentValue(main_doc_bytes []byte, p int32) (reflect.Value, int32) {
 }
 
 //sets the value of the given field with the appropiate type
-func setDocumentFieldValue(document *reflect.Value, field_value interface{}, typebyte byte, field_num int) {
-	fmt.Println(field_value)
-	//fmt.Println("Can set: ", document.CanSet())
+func SetDocumentFieldValue(document *reflect.Value, field_value interface{}, typebyte byte, field_num int) {
+	//fmt.Println(field_value)
 	switch typebyte {
 	case FLOAT64_TYPE:
 		document.Field(field_num).SetFloat(field_value.(float64))
@@ -608,9 +617,6 @@ func setDocumentFieldValue(document *reflect.Value, field_value interface{}, typ
 		document.Field(field_num).SetString(field_value.(string))
 	case DOCUMENT_TYPE:
 		document.Field(field_num).Set(reflect.ValueOf(field_value))
-		this set function doesnt work
-		its trying to assign a struct with a structure to a struct with no structure
-		maybe edit the document field to accept the same fields as the field_value
 	case ARRAY_TYPE:
 		document.Field(field_num).Set(reflect.ValueOf(field_value))
 	case BINARY_TYPE:
@@ -676,17 +682,17 @@ func readFieldValue(typebyte byte, doc_bytes []byte, p int32) (interface{}, int3
 
 //pass name of struct and the type byte
 //returns a reflect structfield
-func initStructField(name string, typebyte byte) *reflect.StructField {
+func InitStructField(name string, typebyte byte, embeded_doc interface{}) *reflect.StructField {
 	structfield := reflect.StructField{
 		Name: name,
-		Type: BSONType(typebyte),
+		Type: BSONType(typebyte, embeded_doc),
 	}
 
 	return &structfield
 }
 
 //pass the byte type in the BSON
-func BSONType(b byte) reflect.Type {
+func BSONType(b byte, embeded_doc interface{}) reflect.Type {
 	switch b {
 	case 0x00:
 		return nil
@@ -695,7 +701,13 @@ func BSONType(b byte) reflect.Type {
 	case STRING_TYPE:
 		return reflect.TypeOf(string(""))
 	case DOCUMENT_TYPE:
-		struct_fields := make([]reflect.StructField, 0)
+		reflected_embeded_doc_type := reflect.ValueOf(embeded_doc).Type()
+		struct_fields := make([]reflect.StructField, reflected_embeded_doc_type.NumField())
+		//set up embeded struct structure
+		for i := 0; i < reflected_embeded_doc_type.NumField(); i++ {
+			struct_fields[i].Name = reflected_embeded_doc_type.Field(i).Name
+			struct_fields[i].Type = reflected_embeded_doc_type.Field(i).Type
+		}
 		return reflect.StructOf(struct_fields[:])
 	case ARRAY_TYPE:
 		return reflect.TypeOf(make([]interface{}, 0))
